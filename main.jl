@@ -7,9 +7,11 @@ local module appropriately.
 Source: https://stackoverflow.com/questions/51824403/import-modules-and-functions-from-a-file-in-a-specific-directory-in-julia-1-0
 =#
 push!(LOAD_PATH, "./")
-import brnn
+# Import local project modules
+import brnn: printArgs
 
+# Here is the main body of the module
 
-brnn.printArgs()
+printArgs()
 
 end
