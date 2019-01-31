@@ -91,7 +91,7 @@ end
 # Train the network from a dataset
 function learn(network::brnnNetwork, data::dataSet)
     for item in data.examples;
-        print(item)
+        println(item)
     end
 end
 
