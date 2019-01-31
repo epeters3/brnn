@@ -8,10 +8,15 @@ Source: https://stackoverflow.com/questions/51824403/import-modules-and-function
 =#
 push!(LOAD_PATH, "./")
 # Import local project modules
-import brnn: printArgs
-
+import brnn: printArgs, brnnNetwork, learn
+import dataset: generateData, dataSet
 # Here is the main body of the module
-
-printArgs()
+function run()
+    dataSet = generateData(10, 10, 1)
+    brnn::brnnNetwork = brnnNetwork(10, 20, 1)
+    learn(brnn, dataSet)
+end
+    printArgs()
+    run()
 
 end
