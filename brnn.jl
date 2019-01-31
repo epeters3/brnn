@@ -5,15 +5,15 @@ using dataset: dataItem, dataSet
 mutable struct forwardLayer
     outputs::Array{Float64}
     activations::Array{Float64}
-    weights::Array{Array{Float64}}
+    weights::Array{Float64,2}
     inputSize::Int
     outputSize::Int
 end
 
 mutable struct recurrentLayer
-    outputs::Array{Array{Float64}} #outputs needed for each timestep
-    activations::Array{Array{Float64}} #activations needed for each timestep
-    weights::Array{Array{Float64}} #weights only needed for one timestep
+    outputs::Array{Array{Float64}} #outputs needed for each timestep, this is not a 2d-array since we don't know ahead of time one of the dimensions
+    activations::Array{Array{Float64}} #activations needed for each timestep, this is not a 2d-array since we don't know ahead of time one of the dimensions
+    weights::Array{Float64,2} #weights only needed for one timestep
     inputSize::Int
     outputSize::Int
 end
@@ -40,10 +40,7 @@ function recurrentLayer(i::Int, o::Int)
   # One timestep for now, we will add timesteps as we need to keep track of activations, and not before
     outputs = [Array{Float64}(undef, o)]
     activations = [Array{Float64}(undef, o)]
-    weights = Array{Array{Float64}}(undef, o)
-    for index in 1:o;
-        weights[o] = Array{Float64}(undef, i)
-    end
+    weights = Array{Float64,2}(undef, o, i) #TODO: Determine order of the dimensions for linear algebra libraries to work
     return recurrentLayer(outputs, activations, weights, i, o)
 end
 
@@ -51,10 +48,7 @@ end
 function forwardLayer(i::Int, o::Int)
     outputs = Array{Float64}(undef, o)
     activations = Array{Float64}(undef, o)
-    weights = Array{Array{Float64}}(undef, o)
-    for index in 1:o;
-        weights[o] = Array{Float64}(undef, i)
-    end
+    weights = Array{Float64,2}(undef, o, i) #TODO: Determine order of the dimensions for linear algebra libraries to work
     return forwardLayer(outputs, activations, weights, i, o)
 end
 
