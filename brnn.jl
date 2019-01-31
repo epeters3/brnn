@@ -40,7 +40,7 @@ function recurrentLayer(i::Int, o::Int)
   # One timestep for now, we will add timesteps as we need to keep track of activations, and not before
     net = [Array{Float64}(undef, o)]
     activations = [Array{Float64}(undef, o)]
-    weights = Array{Float64,2}(undef, o, i) #TODO: Determine order of the dimensions for linear algebra libraries to work
+    weights = Array{Float64,2}(undef, o, i + 1) #TODO: Determine order of the dimensions for linear algebra libraries to work
     return recurrentLayer(net, activations, weights, i, o)
 end
 
@@ -48,7 +48,7 @@ end
 function forwardLayer(i::Int, o::Int)
     net = Array{Float64}(undef, o)
     activations = Array{Float64}(undef, o)
-    weights = Array{Float64,2}(undef, o, i) #TODO: Determine order of the dimensions for linear algebra libraries to work
+    weights = Array{Float64,2}(undef, o, i + 1) #TODO: Determine order of the dimensions for linear algebra libraries to work
     return forwardLayer(net, activations, weights, i, o)
 end
 
