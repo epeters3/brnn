@@ -52,4 +52,49 @@ function generateDparityData(numItems::Int, parityIndices::Array{Int})
     return data
 end
 
+"""
+Used by generateWeightedSumData to calculate the weighted sum for each window.
+`sumRange` is a `UnitRange{Int64}` e.g. `1:10`
+"""
+function weightedSum(data::Array{Float64}, currIndex::Int, sumRange::UnitRange{Int64})
+    sum::Float64 = 0.0
+    maxIndex = length(data)
+    windowSize = length(sumRange)
+    for i in sumRange;
+        if currIndex + i > 0 && currIndex + i <= maxIndex
+            # Make sure the index we're accessing is valid
+            sum += data[currIndex + i] * (1 - abs(i) / windowSize)
+        end
+    end
+    return sum
+end
+
+"""
+An implementation for generating the artificial data used in the original BRNN paper
+by Mike Schuster and Kuldip K. Paliwal in 1997. The artificial data is generated as
+follows. First, a stream of `numItems` random numbers between zero and one is created
+as the one-dimensional (1-D) input data. The 1-D output data is obtained as the
+weighted sum of the inputs within a window of `leftWindowSize` frames to the left and
+`rightWindowSize` frames to the right with respect to the current frame.
+"""
+function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindowSize::Int, isClassification::Bool)
+    data::dataSet = dataSet(Array{dataItem}(undef, numItems))
+    randFloats = rand(Float64, numItems)
+    # Make sure these args are positive
+    leftWindowSize = abs(leftWindowSize)
+    rightWindowSize = abs(rightWindowSize)
+
+    for i in 1:numItems;
+        leftSum::Float64 = (1 / leftWindowSize) * weightedSum(randFloats, i, -leftWindowSize:-1)
+        rightSum::Float64 = (1 / rightWindowSize) * weightedSum(randFloats, i, 0:rightWindowSize - 1)
+        label::Float64 = leftSum + rightSum
+        if isClassification
+            label = label <= 0.5 ? 0.0 : 1.0
+        end
+        data.examples[i] = dataItem([randFloats[i]], [label])
+    end
+
+    return data
+end
+
 end
