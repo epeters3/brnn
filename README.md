@@ -4,13 +4,8 @@ Authors: Evan Peterson & Tim Whiting
 
 ## Running The Program
 
-From the julia Repl, type:
+From the terminal, with Julia >= 1.0.0 installed and added to `PATH`, run:
 
 ```julia
-include("main.jl")
+julia main.jl
 ```
-
-## References:
-
--   [Julia modules](https://docs.julialang.org/en/v1/manual/modules/index.html)
--   [Documenting Julia Code](https://docs.julialang.org/en/v1/manual/documentation/)
