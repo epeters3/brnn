@@ -13,7 +13,7 @@ import dataset: generateData, dataSet
 # Here is the main body of the module
 function run()
     dataSet = generateData(10, 10, 1)
-    brnn::brnnNetwork = brnnNetwork(10, 20, 1)
+    brnn::brnnNetwork = brnnNetwork(2, 4, 2)
     learn(brnn, dataSet)
 end
     printArgs()

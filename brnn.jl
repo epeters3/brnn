@@ -1,6 +1,6 @@
 module brnn
+using Random
 using dataset: dataItem, dataSet
-
 # Data Structures
 mutable struct forwardLayer
     net::Array{Float64}
@@ -40,7 +40,7 @@ function recurrentLayer(i::Int, o::Int)
   # One timestep for now, we will add timesteps as we need to keep track of activations, and not before
     net = [Array{Float64}(undef, o)]
     activations = [Array{Float64}(undef, o)]
-    weights = Array{Float64,2}(undef, o, i + 1) #TODO: Determine order of the dimensions for linear algebra libraries to work
+    weights = (rand(o, i + o + 1) .* 2) .- 1 #TODO: See how to get this to clip to [-1:1]
     return recurrentLayer(net, activations, weights, i, o)
 end
 
@@ -48,39 +48,34 @@ end
 function forwardLayer(i::Int, o::Int)
     net = Array{Float64}(undef, o)
     activations = Array{Float64}(undef, o)
-    weights = Array{Float64,2}(undef, o, i + 1) #TODO: Determine order of the dimensions for linear algebra libraries to work
+    weights = (rand(o, i + 1) .* 2) .- 1
+    println(weights)
+    println()
     return forwardLayer(net, activations, weights, i, o)
 end
 
+
 # Forward Propagation From Inputs to Outputs
-function propagateForward(network::brnnNetwork, inputs::dataItem)
-
+function propagateForward(network::brnnNetwork, inputs::Array{dataItem}, activation::Function)
+    # TODO: Call propagate forward for the appropriate number of time steps and the number of inputs 
+    propagateForward(network.recurrentForwardsLayer, inputs[0], activation)
+    propagateForward(network.recurrentBackwardsLayer, inputs[0], activation)
+    propagateForward(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer, activation)
 end
 
 # Data items are the input to the recurrent layer
-function propagateForward(layer::recurrentLayer, inputs::dataItem)
-
+function propagateForward(layer::recurrentLayer, inputs::dataItem, activation::Function)
+    # The input to the recurrent layer is the input concatenated with the recurrent layer's previous activation and a bias
+    push!(layer.net, layer.weights * hcat(inputs.features, layer.activations[end], 1))
+    push!(layer.activations, activation(layer.net[end]))
 end
 
 # The outputs of forward and backward recurrent layers are the inputs to the last layer
-function propagateForward(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer)
-
+function propagateForward(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer, activation::Function)
+    layer.net = hcat(forwardInputs.activations[end], backwardInputs.activations[end], 1)
+    layer.activation = activation(layer.net)
 end
 
-# Resilient Propagation Learning
-function rprop(network::brnnNetwork, outputs::dataItem)
-
-end
-
-# Data items are the input to the recurrent layer
-function rprop(layer::recurrentLayer, inputs::dataItem)
-
-end
-
-# The outputs of forward and backward recurrent layers are the inputs to the last layer
-function rprop(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer)
-
-end
 
 # Train the network from a dataset
 function learn(network::brnnNetwork, data::dataSet)
