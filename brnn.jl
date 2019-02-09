@@ -1,6 +1,7 @@
 module brnn
 using Random
 using dataset: dataItem, dataSet
+using plugins: sigmoid, sigmoidPrime
 # Data Structures
 
 struct learningParams
@@ -44,18 +45,8 @@ mutable struct brnnNetwork
     params::learningParams
 end
 
-
-
-function sigmoidActivation(inputs::Array{Float64,1})
-    return 1 ./ (1 .+ ℯ.^(-inputs))
-end
-
-function sigmoidFprimeNet(activations::Array{Float64,1})
-    return activations .* (1 .- activations)
-end
-
 function learningParams(learningRate::Float64, τ::Int)
-    return learningParams(sigmoidActivation, sigmoidFprimeNet, learningRate, τ)
+    return learningParams(sigmoid, sigmoidPrime, learningRate, τ)
 end
 
 function learningStatistics()
