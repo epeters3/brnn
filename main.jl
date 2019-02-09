@@ -13,9 +13,9 @@ import dataset: generateWeightedSumData, dataSet
 # Here is the main body of the module
 function run()
     dataSet = generateWeightedSumData(1000, 10, 20, true)
-    brnn::brnnNetwork = brnnNetwork(1, 1, 1)
     params::learningParams = learningParams(.01, 30);
-    learn(brnn, dataSet, params)
+    brnn::brnnNetwork = brnnNetwork(1, 1, 1, params, params, params)
+    learn(brnn, dataSet)
 end
 
 
