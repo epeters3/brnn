@@ -8,15 +8,21 @@ Source: https://stackoverflow.com/questions/51824403/import-modules-and-function
 =#
 push!(LOAD_PATH, "./")
 # Import local project modules
-import brnn: printArgs, brnnNetwork, learn
-import dataset: generateData, dataSet
+import brnn: printArgs, brnnNetwork, learn, learningParams
+import dataset: generateWeightedSumData, dataSet
 # Here is the main body of the module
 function run()
-    dataSet = generateData(10, 10, 1)
-    brnn::brnnNetwork = brnnNetwork(2, 4, 2)
-    learn(brnn, dataSet)
+    dataSet = generateWeightedSumData(1000, 10, 20, true)
+    brnn::brnnNetwork = brnnNetwork(1, 1, 1)
+    params::learningParams = learningParams(.01, 30);
+    learn(brnn, dataSet, params)
 end
+
+
+
+
+
+
     printArgs()
     run()
-
 end

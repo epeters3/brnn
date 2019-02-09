@@ -2,12 +2,12 @@ module dataset
 import Base.show
 
 struct dataItem
-    features::Array{Float64}
-    labels::Array{Float64}
+    features::Array{Float64,1}
+    labels::Array{Float64,1}
 end
 
 mutable struct dataSet
-    examples::Array{dataItem}
+    examples::Array{dataItem,1}
 end
 
 function Base.show(io::IO, item::dataItem)
@@ -32,7 +32,7 @@ at the beginning or end of the set to compute the parity using parityIndices (ca
 in a naiive way), the label value is 0.0.
 """
 function generateDparityData(numItems::Int, parityIndices::Array{Int})
-    data::dataSet = dataSet(Array{dataItem}(undef, numItems))
+    data::dataSet = dataSet(Array{dataItem,1}(undef, numItems))
     maxParityIndex = maximum(abs.(parityIndices))
     randBits = rand(0.0:1.0, numItems)
 
@@ -56,7 +56,7 @@ end
 Used by generateWeightedSumData to calculate the weighted sum for each window.
 `sumRange` is a `UnitRange{Int64}` e.g. `1:10`
 """
-function weightedSum(data::Array{Float64}, currIndex::Int, sumRange::UnitRange{Int64})
+function weightedSum(data::Array{Float64,1}, currIndex::Int, sumRange::UnitRange{Int64})
     sum::Float64 = 0.0
     maxIndex = length(data)
     windowSize = length(sumRange)
@@ -78,7 +78,7 @@ weighted sum of the inputs within a window of `leftWindowSize` frames to the lef
 `rightWindowSize` frames to the right with respect to the current frame.
 """
 function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindowSize::Int, isClassification::Bool)
-    data::dataSet = dataSet(Array{dataItem}(undef, numItems))
+    data::dataSet = dataSet(Array{dataItem,1}(undef, numItems))
     randFloats = rand(Float64, numItems)
     # Make sure these args are positive
     leftWindowSize = abs(leftWindowSize)
