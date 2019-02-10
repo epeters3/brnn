@@ -175,17 +175,32 @@ function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs
 end
 
 # Train the network from a dataset
-function learn(network::brnnNetwork, data::dataSet)
+function learn(network::brnnNetwork, data::dataSet, validation::dataSet)
     window = Array{dataItem}(undef, 0)
     timesThrough = 0
-    for item in data.examples
-        push!(window, item) # Appends to the end
-        if length(window) == network.params.τ
-            propagateForward(network, window);
-            bptt(network, window);
-            popfirst!(window) # Pops from the first
-            timesThrough += 1
+    error = 1
+    epoch = 0
+    while error > .2
+        for item in data.examples
+            push!(window, item) # Appends to the end
+            if length(window) == network.params.τ
+                propagateForward(network, window);
+                bptt(network, window);
+                popfirst!(window) # Pops from the first
+                timesThrough += 1
+            end
         end
+        window = Array{dataItem}(undef, 0)
+        error = 0
+        for item in validation.examples
+            push!(window, item) # Appends to the end
+            if length(window) == network.params.τ
+                propagateForward(network, window);
+                error += sum(item.labels - network.outputLayer.activations)
+            end
+        end
+        println("Epoch $(epoch): Error: $(error)")
+        epoch += 1
     end
     println("Learned from $(timesThrough) examples");
 end 

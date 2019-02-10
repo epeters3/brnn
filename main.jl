@@ -10,12 +10,17 @@ push!(LOAD_PATH, "./")
 # Import local project modules
 import brnn: printArgs, brnnNetwork, learn, learningParams
 import dataset: generateWeightedSumData, dataSet
+import ml_plots: displayLayerStatistics
 # Here is the main body of the module
 function run()
-    dataSet = generateWeightedSumData(1000, 10, 20, true)
+    dataSet = generateWeightedSumData(10000, 10, 20, true)
+    validation = generateWeightedSumData(1000, 10, 20, true)
     params::learningParams = learningParams(.01, 30);
     brnn::brnnNetwork = brnnNetwork(1, 1, 1, params, params, params)
-    learn(brnn, dataSet)
+    learn(brnn, dataSet, validation)
+    displayLayerStatistics(brnn.outputLayer.stats, "output.jpg")
+    displayLayerStatistics(brnn.recurrentBackwardsLayer.stats, "backward.jpg")
+    displayLayerStatistics(brnn.recurrentForwardsLayer.stats, "forward.jpg")
 end
 
 
