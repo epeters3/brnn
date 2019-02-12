@@ -2,7 +2,10 @@ module brnn
 using Random
 using dataset: dataItem, dataSet
 using plugins: sigmoid, sigmoidPrime
-# Data Structures
+
+####################
+#### Data Structures
+####################
 
 struct learningParams
     activation::Function
@@ -44,6 +47,10 @@ mutable struct brnnNetwork
     params::learningParams
 end
 
+#################
+#### Constructors
+#################
+
 function learningParams(learningRate::Float64, τ::Int)
     return learningParams(sigmoid, sigmoidPrime, learningRate, τ)
 end
@@ -75,18 +82,12 @@ function forwardLayer(i::Int, o::Int, params::learningParams)
     return forwardLayer(activations, weights, i, o, params, learningStatistics())
 end
 
+########################
+#### Forward Propagation
+########################
+
 function clearActivations(layer::recurrentLayer)
     layer.activations = [zeros(layer.outputSize)];
-end
-
-# Forward Propagation From Inputs to Outputs
-function propagateForward(network::brnnNetwork, inputs::Array{dataItem})
-    # TODO: Call propagate forward for the appropriate number of time steps and the number of inputs
-    clearActivations(network.recurrentForwardsLayer)
-    clearActivations(network.recurrentBackwardsLayer)
-    propagateForward(network.recurrentForwardsLayer, inputs)
-    propagateForward(network.recurrentBackwardsLayer, inputs)
-    propagateForward(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
 end
 
 function propagateForward(weights::Array{Float64,2}, inputs::Array{Float64,1}, activation::Function)
@@ -111,6 +112,20 @@ end
 function propagateForward(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer)
     layer.activations = propagateForward(layer.weights, vcat(forwardInputs.activations[end], backwardInputs.activations[end], 1), layer.params.activation)
 end
+
+# Forward Propagation From Inputs to Outputs
+function propagateForward(network::brnnNetwork, inputs::Array{dataItem})
+    # TODO: Call propagate forward for the appropriate number of time steps and the number of inputs
+    clearActivations(network.recurrentForwardsLayer)
+    clearActivations(network.recurrentBackwardsLayer)
+    propagateForward(network.recurrentForwardsLayer, inputs)
+    propagateForward(network.recurrentBackwardsLayer, inputs)
+    propagateForward(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
+end
+
+####################
+#### Backpropagation
+####################
 
 #j denotes current layer, i denotes input layer
 function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::learningStatistics)
@@ -174,6 +189,10 @@ function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs
     layer.weights .+= δweights;
 end
 
+#######################
+#### Training Mechanics
+#######################
+
 # Train the network from a dataset
 function learn(network::brnnNetwork, data::dataSet, validation::dataSet)
     window = Array{dataItem}(undef, 0)
@@ -209,8 +228,5 @@ end
 function test(network::brnnNetwork, data::dataSet)
 
 end
-
-
-    printArgs() = println("The command line args are $(ARGS)")
 
 end

@@ -8,9 +8,10 @@ Source: https://stackoverflow.com/questions/51824403/import-modules-and-function
 =#
 push!(LOAD_PATH, "./")
 # Import local project modules
-import brnn: printArgs, brnnNetwork, learn, learningParams
+import brnn: brnnNetwork, learn, learningParams
 import dataset: generateWeightedSumData, dataSet
 import ml_plots: displayLayerStatistics
+
 # Here is the main body of the module
 function run()
     dataSet = generateWeightedSumData(10000, 10, 20, true)
@@ -23,11 +24,6 @@ function run()
     displayLayerStatistics(brnn.recurrentForwardsLayer.stats, "forward.jpg")
 end
 
+run()
 
-
-
-
-
-    printArgs()
-    run()
 end
