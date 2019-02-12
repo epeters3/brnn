@@ -1,7 +1,7 @@
 module brnn
 using Random
 using dataset: dataItem, dataSet
-using plugins: sigmoid, sigmoidPrime
+using plugins: sigmoid, sigmoidPrime, SSE
 
 ####################
 #### Data Structures
@@ -193,33 +193,59 @@ end
 #### Training Mechanics
 #######################
 
-# Train the network from a dataset
-function learn(network::brnnNetwork, data::dataSet, validation::dataSet)
+"""
+Train the network from a dataset
+`patience`:     Number of epochs with no improvement after which training will be stopped.
+`min_delta`:    Minimum change in the validation accuracy to qualify as an improvement,
+                i.e. an absolute change of less than min_delta, will count as no improvement.
+"""
+function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patience::Int, minDelta::Float64, maxEpochs::Int)
     window = Array{dataItem}(undef, 0)
     timesThrough = 0
-    error = 1
-    epoch = 0
-    while error > .2
+    trainError = 0
+    prevValError = Inf64
+    valError = 0
+    epoch = 1
+    numNoImprovement = 0
+    while numNoImprovement < patience && epoch <= maxEpochs
+        # Train the model
+        trainError = 0
         for item in data.examples
             push!(window, item) # Appends to the end
             if length(window) == network.params.τ
                 propagateForward(network, window);
+                trainError += SSE(item.labels, network.outputLayer.activations)
+                # println("train: $(item.labels) - $(network.outputLayer.activations)")
                 bptt(network, window);
                 popfirst!(window) # Pops from the first
                 timesThrough += 1
             end
         end
+        
+        # Validate the model
         window = Array{dataItem}(undef, 0)
-        error = 0
         for item in validation.examples
             push!(window, item) # Appends to the end
             if length(window) == network.params.τ
                 propagateForward(network, window);
-                error += sum(item.labels - network.outputLayer.activations)
+                valError += SSE(item.labels, network.outputLayer.activations)
+                # println("validate: $(item.labels) - $(network.outputLayer.activations)")
+                popfirst!(window) # Pops from the first
             end
         end
-        println("Epoch $(epoch): Error: $(error)")
+
+        # Report
+        println("Epoch $(epoch): numNoImprovement: $(numNoImprovement) Train error: $(trainError) Validation error: $(valError)")
         epoch += 1
+        valErrorDelta = prevValError - valError
+        if (valErrorDelta < minDelta)
+            numNoImprovement += 1
+        else
+            numNoImprovement = 0
+        end
+        prevValError = valError
+        trainError = 0
+        valError = 0
     end
     println("Learned from $(timesThrough) examples");
 end 

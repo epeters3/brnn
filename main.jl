@@ -9,16 +9,16 @@ Source: https://stackoverflow.com/questions/51824403/import-modules-and-function
 push!(LOAD_PATH, "./")
 # Import local project modules
 import brnn: brnnNetwork, learn, learningParams
-import dataset: generateWeightedSumData, dataSet
+import dataset: generateWeightedSumData, generateDparityData, dataSet
 import ml_plots: displayLayerStatistics
 
 # Here is the main body of the module
 function run()
-    dataSet = generateWeightedSumData(10000, 10, 20, true)
-    validation = generateWeightedSumData(1000, 10, 20, true)
-    params::learningParams = learningParams(.01, 30);
+    dataSet = generateDparityData(100, [1, 0, -1])
+    validation = generateDparityData(10, [1, 0, -1])
+    params::learningParams = learningParams(.1, 3);
     brnn::brnnNetwork = brnnNetwork(1, 1, 1, params, params, params)
-    learn(brnn, dataSet, validation)
+    learn(brnn, dataSet, validation, 20, .0001, 1000)
     displayLayerStatistics(brnn.outputLayer.stats, "output.jpg")
     displayLayerStatistics(brnn.recurrentBackwardsLayer.stats, "backward.jpg")
     displayLayerStatistics(brnn.recurrentForwardsLayer.stats, "forward.jpg")

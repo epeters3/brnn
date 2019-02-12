@@ -1,1 +1,4 @@
 builddir
+*.png
+*.jpg
+*.jpeg

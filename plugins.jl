@@ -23,4 +23,6 @@ ReLUPrime(outputs::Array{Float64}) = ReLUPrime.(outputs)
 
 crossEntropy(t::Array{Float64}, z::Array{Float64}) = -sum(t .* log.(z))
 
+SSE(t::Array{Float64}, z::Array{Float64}) = sum((t - z).^2)
+
 end # module plugins
