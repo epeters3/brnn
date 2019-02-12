@@ -1,4 +1,11 @@
 module plugins
+
+############
+#### Helpers
+############
+
+assertEqualLength(a::Array, b::Array) = length(a) != length(b) && error("arguments must be of equal length $(length(a)) != $(length(b))")
+
 #########################
 #### Activation Functions
 #########################
@@ -21,8 +28,19 @@ ReLUPrime(outputs::Array{Float64}) = ReLUPrime.(outputs)
 #### Loss Functions
 ###################
 
-crossEntropy(t::Array{Float64}, z::Array{Float64}) = -sum(t .* log.(z))
+function crossEntropy(t::Array{Float64}, z::Array{Float64})
+    assertEqualLength(t, z)
+    return -sum(t .* log.(z))
+end
 
-SSE(t::Array{Float64}, z::Array{Float64}) = sum((t - z).^2)
+function SSE(t::Array{Float64}, z::Array{Float64})
+    assertEqualLength(t, z)
+    return sum((t - z).^2)
+end
+
+function MSE(t::Array{Float64}, z::Array{Float64})
+    assertEqualLength(t, z)
+    return sum((t - z).^2) / length(t)
+end
 
 end # module plugins
