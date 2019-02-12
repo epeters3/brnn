@@ -10,7 +10,7 @@ push!(LOAD_PATH, "./")
 # Import local project modules
 import brnn: brnnNetwork, learn, learningParams
 import dataset: generateWeightedSumData, generateDparityData, dataSet
-import ml_plots: displayLayerStatistics
+import ml_plots: displayLayerStatistics, displayLearningStatistics
 
 # Here is the main body of the module
 function run()
@@ -22,6 +22,7 @@ function run()
     displayLayerStatistics(brnn.outputLayer.stats, "output.jpg")
     displayLayerStatistics(brnn.recurrentBackwardsLayer.stats, "backward.jpg")
     displayLayerStatistics(brnn.recurrentForwardsLayer.stats, "forward.jpg")
+    displayLearningStatistics(brnn.stats, "brnn-stats.jpg")
 end
 
 run()

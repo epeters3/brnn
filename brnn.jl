@@ -14,8 +14,14 @@ struct learningParams
     τ::Int64
 end
 
-struct learningStatistics
+struct layerStatistics
     averageWeightChange::Array{Float64,1}
+end
+
+# Stores data about each epoch
+struct learningStatistics
+    valErrors::Array{Float64,1}
+    trainErrors::Array{Float64,1}
 end
 
 mutable struct forwardLayer
@@ -24,7 +30,7 @@ mutable struct forwardLayer
     inputSize::Int
     outputSize::Int
     params::learningParams
-    stats::learningStatistics
+    stats::layerStatistics
 end
 
 mutable struct recurrentLayer
@@ -34,7 +40,7 @@ mutable struct recurrentLayer
     outputSize::Int
     forward::Bool
     params::learningParams
-    stats::learningStatistics
+    stats::layerStatistics
 end
 
 mutable struct brnnNetwork
@@ -45,6 +51,7 @@ mutable struct brnnNetwork
     hiddenSize::Int
     outputSize::Int
     params::learningParams
+    stats::learningStatistics
 end
 
 #################
@@ -55,8 +62,12 @@ function learningParams(learningRate::Float64, τ::Int)
     return learningParams(sigmoid, sigmoidPrime, learningRate, τ)
 end
 
+function layerStatistics()
+    return layerStatistics([0])
+end
+
 function learningStatistics()
-    return learningStatistics([0])
+    return learningStatistics([], [])
 end
 
 # Initalize a brnn with i inputs, n hidden nodes, and o output nodes
@@ -64,7 +75,8 @@ function brnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::learningParam
     forwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, true)
     backwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, false)
     outputLayer = forwardLayer(n * 2, o, outputLearningParams)
-    return brnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams)
+    stats = learningStatistics()
+    return brnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, stats)
 end
 
 # Initalize a recurrentLayer with i inputs, and o output nodes
@@ -72,14 +84,14 @@ function recurrentLayer(i::Int, o::Int, params::learningParams, forward::Bool)
   # One timestep for now, we will add timesteps as we need to keep track of activations, and not before
     activations = [zeros(o)];
     weights = (rand(o, i + o + 1) .* 2) .- 1 #There is a weight to every input output and 
-    return recurrentLayer(activations, weights, i, o, forward, params, learningStatistics())
+    return recurrentLayer(activations, weights, i, o, forward, params, layerStatistics())
 end
 
 # Initalize a regular forward layer with i inputs, and o output nodes
 function forwardLayer(i::Int, o::Int, params::learningParams)
     activations = Array{Float64}(undef, o)
     weights = (rand(o, i + 1) .* 2) .- 1
-    return forwardLayer(activations, weights, i, o, params, learningStatistics())
+    return forwardLayer(activations, weights, i, o, params, layerStatistics())
 end
 
 ########################
@@ -128,7 +140,7 @@ end
 ####################
 
 #j denotes current layer, i denotes input layer
-function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::learningStatistics)
+function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics)
     #error, targets, outputs, are all j x 1 arrays
     error_j = (targets_j .- outputs_j) .* params_j.fPrimeNet(outputs_j)
     #error is j x 1, outputs is 1 x i (after transpose)
@@ -138,11 +150,11 @@ function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64
 end
 
 #j denotes current layer, i denotes input layer, k denotes following layer
-function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::learningStatistics)
+function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics)
     #error_j is j x 1, weights_jk should be k x j, errors_k should be k x 1, outputs_j should be j x 1
-    #println("outputs_j $(size(outputs_j))")
-    #println("weights_jk $(size(weights_jk))")
-    #println("errors_k $(size(errors_k))")
+    # println("outputs_j $(size(outputs_j))")
+    # println("weights_jk $(size(weights_jk))")
+    # println("errors_k $(size(errors_k))")
     error_j = (transpose(weights_jk) * errors_k)  .* params_j.fPrimeNet(outputs_j)
     #error is j x 1, outputs is 1 x i (after transpose)
     #this leads to weights_ij being j x i (which is correct)
@@ -193,12 +205,12 @@ end
 #### Training Mechanics
 #######################
 
-"""
+#=
 Train the network from a dataset
 `patience`:     Number of epochs with no improvement after which training will be stopped.
 `min_delta`:    Minimum change in the validation accuracy to qualify as an improvement,
                 i.e. an absolute change of less than min_delta, will count as no improvement.
-"""
+=#
 function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patience::Int, minDelta::Float64, maxEpochs::Int)
     window = Array{dataItem}(undef, 0)
     timesThrough = 0
@@ -235,8 +247,12 @@ function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patienc
         end
 
         # Report
-        println("Epoch $(epoch): numNoImprovement: $(numNoImprovement) Train error: $(trainError) Validation error: $(valError)")
+        println("Epoch $(epoch): Validation error: $(valError) Train error: $(trainError) numNoImprovement: $(numNoImprovement) ")
+
+        # Housekeeping
         epoch += 1
+        push!(network.stats.valErrors, valError / length(validation.examples)) # Mean Squared Error
+        push!(network.stats.trainErrors, trainError / length(data.examples)) # Mean Squared Error
         valErrorDelta = prevValError - valError
         if (valErrorDelta < minDelta)
             numNoImprovement += 1
