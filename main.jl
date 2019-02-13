@@ -17,7 +17,7 @@ function run()
     dataSet = generateDparityData(100, [1, 0, -1])
     validation = generateDparityData(10, [1, 0, -1])
     params::learningParams = learningParams(.1, 3);
-    brnn::brnnNetwork = brnnNetwork(1, 1, 1, params, params, params)
+    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, params, params)
     learn(brnn, dataSet, validation, 20, .0001, 1000)
     displayLayerStatistics(brnn.outputLayer.stats, "output.jpg")
     displayLayerStatistics(brnn.recurrentBackwardsLayer.stats, "backward.jpg")

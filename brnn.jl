@@ -169,20 +169,23 @@ end
 function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, weights_jk::Array{Float64,2}, inputs::Array{dataItem,1}, range::UnitRange{Int64})
     δweights = Array{Array{Float64,2},1}(undef, 0)
     layerError = errors_k
-    weights = weights_jk
+    # This is the half of the weights that take the forward layer activations as inputs
+    forwardWeights = weights_jk[:,1:layer.outputSize]
+    # This is the half of the weights that take the backwards layer activations as inputs (end - 1 excludes the bias)
+    backwardWeights = weights_jk[:,layer.outputSize + 1:end - 1]
     if layer.forward
         for i in length(layer.activations) - 1:-1:2
-            layerError, δweights_ij = backprop(weights, layerError, layer.activations[i], vcat(layer.activations[i - 1]..., inputs[i].features..., 1), layer.params, layer.stats)
+            layerError, δweights_ij = backprop(forwardWeights, layerError, layer.activations[i], vcat(layer.activations[i - 1]..., inputs[i].features..., 1), layer.params, layer.stats)
             push!(δweights, reshape(δweights_ij[range], layer.outputSize, :)) 
-            weights = layer.weights
+            forwardWeights = layer.weights
             layerError = layerError[range]
 
         end
     else
         for i in length(layer.activations) - 1:-1:2
-            layerError, δweights_ij = backprop(weights, layerError, layer.activations[i], vcat(layer.activations[i - 1]..., inputs[length(layer.activations) - i + 1].features..., 1), layer.params, layer.stats)
+            layerError, δweights_ij = backprop(backwardWeights, layerError, layer.activations[i], vcat(layer.activations[i - 1]..., inputs[length(layer.activations) - i + 1].features..., 1), layer.params, layer.stats)
             push!(δweights, reshape(δweights_ij[range], layer.outputSize, :)) 
-            weights = layer.weights
+            backwardWeights = layer.weights
             layerError = layerError[range]
         end
     end
