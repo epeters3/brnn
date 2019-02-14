@@ -1,6 +1,6 @@
 module brnn
 using dataset: dataItem, dataSet
-using plugins: sigmoid, sigmoidPrime, SSE, randGaussian
+using plugins: sigmoid, sigmoidPrime, SSE, randGaussian, RPropMomentum
 
 ####################
 #### Data Structures
@@ -9,6 +9,7 @@ using plugins: sigmoid, sigmoidPrime, SSE, randGaussian
 struct learningParams
     activation::Function
     fPrimeNet::Function
+    addMomentum::Function
     learningRate::Float64
     τ::Int64
 end
@@ -26,6 +27,7 @@ end
 mutable struct forwardLayer
     activations::Array{Float64}
     weights::Array{Float64,2}
+    deltaWeightsPrev::Array{Float64,2}
     inputSize::Int
     outputSize::Int
     params::learningParams
@@ -35,6 +37,7 @@ end
 mutable struct recurrentLayer
     activations::Array{Array{Float64}} #activations needed for each timestep, this is not a 2d-array since we don't know ahead of time one of the dimensions
     weights::Array{Float64,2} #weights only needed for one timestep
+    deltaWeightsPrev::Array{Float64,2}
     inputSize::Int
     outputSize::Int
     forward::Bool
@@ -58,7 +61,8 @@ end
 #################
 
 function learningParams(learningRate::Float64, τ::Int)
-    return learningParams(sigmoid, sigmoidPrime, learningRate, τ)
+    momentumF = RPropMomentum(.5, 1.2)
+    return learningParams(sigmoid, sigmoidPrime, momentumF, learningRate, τ)
 end
 
 function layerStatistics()
@@ -83,14 +87,16 @@ function recurrentLayer(i::Int, o::Int, params::learningParams, forward::Bool)
   # One timestep for now, we will add timesteps as we need to keep track of activations, and not before
     activations = [zeros(o)];
     weights = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
-    return recurrentLayer(activations, weights, i, o, forward, params, layerStatistics())
+    deltaWeightsPrev = zeros((o, i + o + 1))
+    return recurrentLayer(activations, weights, deltaWeightsPrev, i, o, forward, params, layerStatistics())
 end
 
 # Initalize a regular forward layer with i inputs, and o output nodes
 function forwardLayer(i::Int, o::Int, params::learningParams)
     activations = Array{Float64}(undef, o)
     weights = randGaussian((o, i + 1), 0.0, 0.1)
-    return forwardLayer(activations, weights, i, o, params, layerStatistics())
+    deltaWeightsPrev = zeros((o, i + 1))
+    return forwardLayer(activations, weights, deltaWeightsPrev, i, o, params, layerStatistics())
 end
 
 ########################
@@ -189,8 +195,11 @@ function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, inputs::Array{d
         layerError, δweights_ij = backprop(layer.weights, layerError, layer.activations[i], layer.activations[i - 1], layer.params, layer.stats, layer.outputSize)
         push!(δweights, δweights_ij) 
     end
-    totalδweights = sum(δweights) ./ length(δweights)
+    # Momentum takes into account the last weight change and the current weight change
+    totalδweights = layer.params.addMomentum(sum(δweights) ./ length(δweights), layer.deltaWeightsPrev)
     push!(layer.stats.averageWeightChange, sum(totalδweights) / length(totalδweights));
+
+    layer.deltaWeightsPrev = totalδweights
     layer.weights .+= totalδweights;
 end
 
@@ -200,8 +209,11 @@ function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs
     hiddenError = findHiddenError(layer.weights, outputError, layer.activations, layer.params)
     bptt(forwardInputs, hiddenError[1:forwardInputs.outputSize], inputs);
     bptt(backwardInputs, hiddenError[forwardInputs.outputSize + 1:end - 1], inputs);
-    push!(layer.stats.averageWeightChange, sum(δweights) / length(δweights));
-    layer.weights .+= δweights;
+
+    actualδWeights = layer.params.addMomentum(δweights, layer.deltaWeightsPrev)
+    layer.deltaWeightsPrev = actualδWeights
+    push!(layer.stats.averageWeightChange, sum(actualδWeights) / length(actualδWeights));
+    layer.weights .+= actualδWeights;
 end
 
 #######################

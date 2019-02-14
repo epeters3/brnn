@@ -60,4 +60,38 @@ function randGaussian(dims::Tuple{Vararg{Int64}}, mean::Float64, stddev::Float64
     return (randn(dims) .* stddev) .- (stddev / 2) .+ mean
 end
 
+
+
+##########
+#### Momentum
+##########
+
+function RPropMomentum(n_minus::Float64, n_plus::Float64)
+    rprop = function (currentδWeights::Array{Float64,2}, prevδWeights::Array{Float64,2})
+        c_lt = currentδWeights .< 0
+        c_gt = currentδWeights .>= 0
+        p_lt = prevδWeights .< 0
+        p_gt = prevδWeights .>= 0
+        didChangeSign = (c_lt .& p_gt) .| (c_gt .& p_lt)
+        didNotChangeSign = (c_lt .& p_lt) .| (c_gt .& p_gt)
+        return currentδWeights .* (n_minus .* didChangeSign + n_plus .* didNotChangeSign);
+    end
+    return rprop
+end
+
+function SimpleMomentum(momentum::Float64)
+    momentumF = function (currentδWeights::Array{Float64,2}, prevδWeights::Array{Float64,2})
+        return currentδWeights .+ (prevδWeights * momentum)
+    end
+    return momentumF
+end
+
+
+
+
+
+
+
 end # module plugins
+
+
