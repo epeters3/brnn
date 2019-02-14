@@ -22,7 +22,12 @@ end
 ReLU(nets::Array{Float64}) = max.(0, nets)
 
 ReLUPrime(output::Float64) = output < 0 ? 0 : 1
+
 ReLUPrime(outputs::Array{Float64}) = ReLUPrime.(outputs)
+
+linear(nets::Array{Float64}) = nets
+
+linearPrime(outputs::Array{Float64}) = ones(size(outputs))
 
 ###################
 #### Loss Functions

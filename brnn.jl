@@ -109,14 +109,18 @@ end
 # Data items are the input to the recurrent layer
 function propagateForward(layer::recurrentLayer, inputs::Array{dataItem})
     # The input to the recurrent layer is the input concatenated with the recurrent layer's previous activation and a bias
-    if layer.forward 
-        for i in inputs
-            push!(layer.activations, propagateForward(layer.weights, vcat(i.features..., layer.activations[end]..., 1), layer.params.activation))
-        end
+    iterable = undef
+    if layer.forward
+        iterable = inputs
     else
-        for i in Iterators.reverse(inputs)
-            push!(layer.activations, propagateForward(layer.weights, vcat(i.features..., layer.activations[end]..., 1), layer.params.activation))
-        end
+        iterable = Iterators.reverse(inputs)
+    end
+    for i in iterable
+        # Persist the input and bias with the previous activations
+        # since we'll use it during part of backpropagation.
+        layer.activations[end] = vcat(layer.activations[end]..., i.features..., 1)
+        activations = propagateForward(layer.weights, layer.activations[end], layer.params.activation)
+        push!(layer.activations, activations)
     end
 end
 
@@ -139,26 +143,38 @@ end
 #### Backpropagation
 ####################
 
+function findOutputError(targets::Array{Float64,1}, outputs::Array{Float64,1}, params::learningParams)
+    return (targets .- outputs) .* params.fPrimeNet(outputs)
+end
+
+function findHiddenError(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, params_j::learningParams)
+    return (transpose(weights_jk) * errors_k)  .* params_j.fPrimeNet(outputs_j)
+end
+
+function findWeightChanges(error_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams)::Array{Float64,2}
+    return (params_j.learningRate * error_j) * transpose(outputs_i)
+end
+
 #j denotes current layer, i denotes input layer
 function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics)
     #error, targets, outputs, are all j x 1 arrays
-    error_j = (targets_j .- outputs_j) .* params_j.fPrimeNet(outputs_j)
+    error_j = findOutputError(targets_j, outputs_j, params_j)
     #error is j x 1, outputs is 1 x i (after transpose)
     #this leads to weights_ij being j x i (which is correct)
-    δweights_ij::Array{Float64,2} = (params_j.learningRate * error_j) * transpose(outputs_i)
+    δweights_ij = findWeightChanges(error_j, outputs_i, params_j)
     return error_j, δweights_ij
 end
 
 #j denotes current layer, i denotes input layer, k denotes following layer
-function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics)
+function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics, outputSize::Int64)
     #error_j is j x 1, weights_jk should be k x j, errors_k should be k x 1, outputs_j should be j x 1
-    # println("outputs_j $(size(outputs_j))")
-    # println("weights_jk $(size(weights_jk))")
+    # println("outputs_j $(size(outputs_j[errorsToKeep]))")
+    # println("weights_jk $(size(weights_jk[:, errorsToKeep]))")
     # println("errors_k $(size(errors_k))")
-    error_j = (transpose(weights_jk) * errors_k)  .* params_j.fPrimeNet(outputs_j)
+    error_j = findHiddenError(weights_jk[:, 1:outputSize], errors_k, outputs_j[1:outputSize], params_j)
     #error is j x 1, outputs is 1 x i (after transpose)
     #this leads to weights_ij being j x i (which is correct)
-    δweights_ij::Array{Float64,2} = (params_j.learningRate * error_j) *  transpose(outputs_i)
+    δweights_ij = findWeightChanges(error_j, outputs_i, params_j)
     return error_j, δweights_ij
 end
 
@@ -166,40 +182,26 @@ function bptt(network::brnnNetwork, inputs::Array{dataItem,1})
     bptt(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer, inputs);
 end
 
-function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, weights_jk::Array{Float64,2}, inputs::Array{dataItem,1}, range::UnitRange{Int64})
+function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, inputs::Array{dataItem,1})
     δweights = Array{Array{Float64,2},1}(undef, 0)
     layerError = errors_k
-    # This is the half of the weights that take the forward layer activations as inputs
-    forwardWeights = weights_jk[:,1:layer.outputSize]
-    # This is the half of the weights that take the backwards layer activations as inputs (end - 1 excludes the bias)
-    backwardWeights = weights_jk[:,layer.outputSize + 1:end - 1]
-    if layer.forward
-        for i in length(layer.activations) - 1:-1:2
-            layerError, δweights_ij = backprop(forwardWeights, layerError, layer.activations[i], vcat(layer.activations[i - 1]..., inputs[i].features..., 1), layer.params, layer.stats)
-            push!(δweights, reshape(δweights_ij[range], layer.outputSize, :)) 
-            forwardWeights = layer.weights
-            layerError = layerError[range]
-
-        end
-    else
-        for i in length(layer.activations) - 1:-1:2
-            layerError, δweights_ij = backprop(backwardWeights, layerError, layer.activations[i], vcat(layer.activations[i - 1]..., inputs[length(layer.activations) - i + 1].features..., 1), layer.params, layer.stats)
-            push!(δweights, reshape(δweights_ij[range], layer.outputSize, :)) 
-            backwardWeights = layer.weights
-            layerError = layerError[range]
-        end
+    for i in length(layer.activations) - 1:-1:2
+        # The persisted activation vector already contains the
+        # appropriate input vector and bias value so just pass it as is.
+        layerError, δweights_ij = backprop(layer.weights, layerError, layer.activations[i], layer.activations[i - 1], layer.params, layer.stats, layer.outputSize)
+        push!(δweights, δweights_ij) 
     end
-    #println("δweights $(size(δweights[1]))")
-    #println("layer.weights $(size(layer.weights))")
     totalδweights = sum(δweights) ./ length(δweights)
     push!(layer.stats.averageWeightChange, sum(totalδweights) / length(totalδweights));
     layer.weights .+= totalδweights;
 end
 
 function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer, inputs::Array{dataItem})
-    error, δweights = backpropLastLayer(inputs[end].labels, layer.activations, vcat(forwardInputs.activations[end]..., backwardInputs.activations[end]..., 1), layer.params, layer.stats)
-    bptt(forwardInputs, error, layer.weights, inputs, 1:forwardInputs.outputSize);
-    bptt(backwardInputs, error, layer.weights, inputs, (forwardInputs.outputSize + 1):(forwardInputs.outputSize + backwardInputs.outputSize));
+    activations = vcat(forwardInputs.activations[end]..., backwardInputs.activations[end]..., 1)
+    outputError, δweights = backpropLastLayer(inputs[end].labels, layer.activations, activations, layer.params, layer.stats)
+    hiddenError = findHiddenError(layer.weights, outputError, layer.activations, layer.params)
+    bptt(forwardInputs, hiddenError[1:forwardInputs.outputSize], inputs);
+    bptt(backwardInputs, hiddenError[forwardInputs.outputSize + 1:end - 1], inputs);
     push!(layer.stats.averageWeightChange, sum(δweights) / length(δweights));
     layer.weights .+= δweights;
 end
