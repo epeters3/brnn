@@ -1,4 +1,5 @@
 builddir
 *.png
 *.jpg
-*.jpeg
+*.jpeg.vscode
+.vscode/
