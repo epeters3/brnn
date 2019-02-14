@@ -48,4 +48,16 @@ function MSE(t::Array{Float64}, z::Array{Float64})
     return sum((t - z).^2) / length(t)
 end
 
+##########
+#### Other
+##########
+
+#=
+Makes an array of arbitrary dimensions filled with normally-distributed values
+following a distribution with mean `mean` and standard deviation `stddev`.
+=#
+function randGaussian(dims::Tuple{Vararg{Int64}}, mean::Float64, stddev::Float64)::Array{Float64}
+    return (randn(dims) .* stddev) .- (stddev / 2) .+ mean
+end
+
 end # module plugins
