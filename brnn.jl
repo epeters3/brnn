@@ -1,7 +1,6 @@
 module brnn
-using Random
 using dataset: dataItem, dataSet
-using plugins: sigmoid, sigmoidPrime, SSE
+using plugins: sigmoid, sigmoidPrime, SSE, randGaussian
 
 ####################
 #### Data Structures
@@ -83,14 +82,14 @@ end
 function recurrentLayer(i::Int, o::Int, params::learningParams, forward::Bool)
   # One timestep for now, we will add timesteps as we need to keep track of activations, and not before
     activations = [zeros(o)];
-    weights = (rand(o, i + o + 1) .* 2) .- 1 #There is a weight to every input output and 
+    weights = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
     return recurrentLayer(activations, weights, i, o, forward, params, layerStatistics())
 end
 
 # Initalize a regular forward layer with i inputs, and o output nodes
 function forwardLayer(i::Int, o::Int, params::learningParams)
     activations = Array{Float64}(undef, o)
-    weights = (rand(o, i + 1) .* 2) .- 1
+    weights = randGaussian((o, i + 1), 0.0, 0.1)
     return forwardLayer(activations, weights, i, o, params, layerStatistics())
 end
 

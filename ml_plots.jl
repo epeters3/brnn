@@ -1,10 +1,12 @@
 module ml_plots
 using brnn: layerStatistics, learningStatistics
+using utils: downSample
 using Plots
 
 
 function displayLayerStatistics(stats::layerStatistics, name::String)
-    plt = plot(1:length(stats.averageWeightChange), stats.averageWeightChange)
+    sampledAvgWeightChange = downSample(stats.averageWeightChange, 1000)
+    plt = plot(1:length(sampledAvgWeightChange), sampledAvgWeightChange)
     savefig(plt, name);
 end
 
