@@ -131,7 +131,6 @@ end
 
 # Forward Propagation From Inputs to Outputs
 function propagateForward(network::brnnNetwork, inputs::Array{dataItem})
-    # TODO: Call propagate forward for the appropriate number of time steps and the number of inputs
     clearActivations(network.recurrentForwardsLayer)
     clearActivations(network.recurrentBackwardsLayer)
     propagateForward(network.recurrentForwardsLayer, inputs)
