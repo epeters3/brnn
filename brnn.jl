@@ -168,8 +168,8 @@ end
 #j denotes current layer, i denotes input layer, k denotes following layer
 function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics, outputSize::Int64)
     #error_j is j x 1, weights_jk should be k x j, errors_k should be k x 1, outputs_j should be j x 1
-    # println("outputs_j $(size(outputs_j[errorsToKeep]))")
-    # println("weights_jk $(size(weights_jk[:, errorsToKeep]))")
+    # println("outputs_j $(size(outputs_j[1:outputSize]))")
+    # println("weights_jk $(size(weights_jk[:, 1:outputSize]))")
     # println("errors_k $(size(errors_k))")
     error_j = findHiddenError(weights_jk[:, 1:outputSize], errors_k, outputs_j[1:outputSize], params_j)
     #error is j x 1, outputs is 1 x i (after transpose)
