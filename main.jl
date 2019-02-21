@@ -24,8 +24,8 @@ end
 function runDparity()
     dataSet = generateDparityData(100, [1, 0, -1])
     validation = generateDparityData(10, [1, 0, -1])
-    params::learningParams = learningParams(.1, 3);
-    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, params, params)
+    params::learningParams = learningParams(.1);
+    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, 2, 2, params, params)
     learn(brnn, dataSet, validation, 20, .0001, 1000)
     mkpath("dparity")
     displayGraphs(brnn, "dparity/")
@@ -35,8 +35,8 @@ end
 function runWeightedSumClassification()
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
-    params::learningParams = learningParams(.09, 10);
-    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, params, params)
+    params::learningParams = learningParams(.09);
+    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, 10, 20, params, params)
     learn(brnn, dataSet, validation, 25, .0001, 1000)
     
     mkpath("weightedSumClassification")
@@ -46,8 +46,8 @@ end
 function runWeightedSumRegression()
     dataSet = generateWeightedSumData(10000, 10, 20, false)
     validation = generateWeightedSumData(1000, 10, 20, false)
-    params::learningParams = learningParams(.01, 10);
-    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, params, params)
+    params::learningParams = learningParams(.01);
+    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, 10, 20, params, params)
     learn(brnn, dataSet, validation, 25, .0001, 1000)
     
     mkpath("weightedSumRegression")

@@ -11,7 +11,6 @@ struct learningParams
     fPrimeNet::Function
     addMomentum::Function
     learningRate::Float64
-    τ::Int64
 end
 
 struct layerStatistics
@@ -42,6 +41,7 @@ mutable struct recurrentLayer
     outputSize::Int
     forward::Bool
     params::learningParams
+    τ::Int64
     stats::layerStatistics
 end
 
@@ -53,6 +53,7 @@ mutable struct brnnNetwork
     hiddenSize::Int
     outputSize::Int
     params::learningParams
+    τ::Int64 # This is the sum of recurrentForwardsLayer.τ and recurrentBackwardsLayer.τ
     stats::learningStatistics
 end
 
@@ -60,9 +61,9 @@ end
 #### Constructors
 #################
 
-function learningParams(learningRate::Float64, τ::Int)
+function learningParams(learningRate::Float64)
     momentumF = RPropMomentum(.5, 1.2)
-    return learningParams(sigmoid, sigmoidPrime, momentumF, learningRate, τ)
+    return learningParams(sigmoid, sigmoidPrime, momentumF, learningRate)
 end
 
 function layerStatistics()
@@ -74,20 +75,20 @@ function learningStatistics()
 end
 
 # Initalize a brnn with i inputs, n hidden nodes, and o output nodes
-function brnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::learningParams, outputLearningParams::learningParams, networkLearningParams::learningParams)
-    forwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, true)
-    backwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, false)
+function brnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::learningParams, forwardτ::Int64, backwardτ::Int64, outputLearningParams::learningParams, networkLearningParams::learningParams)
+    forwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, forwardτ, true)
+    backwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, backwardτ, false)
     outputLayer = forwardLayer(n * 2, o, outputLearningParams)
     stats = learningStatistics()
-    return brnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, stats)
+    return brnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, forwardτ+backwardτ, stats)
 end
 
-# Initalize a recurrentLayer with i inputs, and o output nodes
-function recurrentLayer(i::Int, o::Int, params::learningParams, forward::Bool)
-    activations = zeros(params.τ+1, i + o + 1);
+# Initalize a recurrentLayer with i inputs, and o output nodes, and a recurrent window of size τ.
+function recurrentLayer(i::Int, o::Int, params::learningParams, τ::Int64, forward::Bool)
+    activations = zeros(τ+1, i + o + 1);
     weights = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
     deltaWeightsPrev = zeros((o, i + o + 1))
-    return recurrentLayer(activations, weights, deltaWeightsPrev, i, o, forward, params, layerStatistics())
+    return recurrentLayer(activations, weights, deltaWeightsPrev, i, o, forward, params, τ, layerStatistics())
 end
 
 # Initalize a regular forward layer with i inputs, and o output nodes
@@ -139,8 +140,8 @@ end
 
 # Forward Propagation From Inputs to Outputs
 function propagateForward(network::brnnNetwork, inputs::Array{dataItem})
-    propagateForward(network.recurrentForwardsLayer, inputs)
-    propagateForward(network.recurrentBackwardsLayer, inputs)
+    propagateForward(network.recurrentForwardsLayer, inputs[1:network.recurrentForwardsLayer.τ])
+    propagateForward(network.recurrentBackwardsLayer, inputs[network.recurrentForwardsLayer.τ+1:end])
     propagateForward(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
 end
 
@@ -241,10 +242,11 @@ function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patienc
         trainError = 0
         for item in data.examples
             push!(window, item) # Appends to the end
-            if length(window) == network.params.τ
+            if length(window) == network.τ
                 propagateForward(network, window);
-                trainError += SSE(item.labels, network.outputLayer.activations)
-                # println("train: $(item.labels) - $(network.outputLayer.activations)")
+                target = window[network.recurrentForwardsLayer.τ+1]
+                trainError += SSE(target.labels, network.outputLayer.activations)
+                # println("train: $(target.labels) - $(network.outputLayer.activations)")
                 bptt(network, window);
                 popfirst!(window) # Pops from the first
                 timesThrough += 1
@@ -255,10 +257,11 @@ function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patienc
         window = Array{dataItem}(undef, 0)
         for item in validation.examples
             push!(window, item) # Appends to the end
-            if length(window) == network.params.τ
+            if length(window) == network.τ
                 propagateForward(network, window);
-                valError += SSE(item.labels, network.outputLayer.activations)
-                # println("validate: $(item.labels) - $(network.outputLayer.activations)")
+                target = window[network.recurrentForwardsLayer.τ+1]
+                valError += SSE(target.labels, network.outputLayer.activations)
+                # println("validate: $(target.labels) - $(network.outputLayer.activations)")
                 popfirst!(window) # Pops from the first
             end
         end
