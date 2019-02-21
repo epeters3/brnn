@@ -35,7 +35,7 @@ mutable struct forwardLayer
 end
 
 mutable struct recurrentLayer
-    activations::Array{Array{Float64}} #activations needed for each timestep, this is not a 2d-array since we don't know ahead of time one of the dimensions
+    activations::Array{Float64,2}
     weights::Array{Float64,2} #weights only needed for one timestep
     deltaWeightsPrev::Array{Float64,2}
     inputSize::Int
@@ -84,8 +84,7 @@ end
 
 # Initalize a recurrentLayer with i inputs, and o output nodes
 function recurrentLayer(i::Int, o::Int, params::learningParams, forward::Bool)
-  # One timestep for now, we will add timesteps as we need to keep track of activations, and not before
-    activations = [zeros(o)];
+    activations = zeros(params.τ+1, i + o + 1);
     weights = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
     deltaWeightsPrev = zeros((o, i + o + 1))
     return recurrentLayer(activations, weights, deltaWeightsPrev, i, o, forward, params, layerStatistics())
@@ -103,10 +102,6 @@ end
 #### Forward Propagation
 ########################
 
-function clearActivations(layer::recurrentLayer)
-    layer.activations = [zeros(layer.outputSize)];
-end
-
 function propagateForward(weights::Array{Float64,2}, inputs::Array{Float64,1}, activation::Function)
     return activation(weights * inputs)
 end
@@ -120,24 +115,30 @@ function propagateForward(layer::recurrentLayer, inputs::Array{dataItem})
     else
         iterable = Iterators.reverse(inputs)
     end
-    for i in iterable
+    i = 1
+    for input in iterable
         # Persist the input and bias with the previous activations
         # since we'll use it during part of backpropagation.
-        layer.activations[end] = vcat(layer.activations[end]..., i.features..., 1)
-        activations = propagateForward(layer.weights, layer.activations[end], layer.params.activation)
-        push!(layer.activations, activations)
+        numFeatures = length(input.features)
+        layer.activations[i, end-numFeatures:end] = vcat(input.features..., 1)
+        nextActivations = propagateForward(layer.weights, layer.activations[i, :], layer.params.activation)
+        i += 1
+        # Pad activations with zeros for now to preserve dimensions of layer.activations.
+        # On the next loop iteration, they will be replaced by the inputs and bias.
+        layer.activations[i, :] = vcat(nextActivations, zeros(numFeatures+1))
     end
 end
 
 # The outputs of forward and backward recurrent layers are the inputs to the last layer
+# We don't pass the inputs and bias to the last layer.
 function propagateForward(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer)
-    layer.activations = propagateForward(layer.weights, vcat(forwardInputs.activations[end], backwardInputs.activations[end], 1), layer.params.activation)
+    forwardActivations = forwardInputs.activations[end, 1:forwardInputs.outputSize]
+    backwardActivations = backwardInputs.activations[end, 1:backwardInputs.outputSize]
+    layer.activations = propagateForward(layer.weights, vcat(forwardActivations, backwardActivations, 1), layer.params.activation)
 end
 
 # Forward Propagation From Inputs to Outputs
 function propagateForward(network::brnnNetwork, inputs::Array{dataItem})
-    clearActivations(network.recurrentForwardsLayer)
-    clearActivations(network.recurrentBackwardsLayer)
     propagateForward(network.recurrentForwardsLayer, inputs)
     propagateForward(network.recurrentBackwardsLayer, inputs)
     propagateForward(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
@@ -189,10 +190,10 @@ end
 function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, inputs::Array{dataItem,1})
     δweights = Array{Array{Float64,2},1}(undef, 0)
     layerError = errors_k
-    for i in length(layer.activations) - 1:-1:2
+    for i in size(layer.activations, 1) - 1:-1:2
         # The persisted activation vector already contains the
         # appropriate input vector and bias value so just pass it as is.
-        layerError, δweights_ij = backprop(layer.weights, layerError, layer.activations[i], layer.activations[i - 1], layer.params, layer.stats, layer.outputSize)
+        layerError, δweights_ij = backprop(layer.weights, layerError, layer.activations[i, :], layer.activations[i - 1, :], layer.params, layer.stats, layer.outputSize)
         push!(δweights, δweights_ij) 
     end
     # Momentum takes into account the last weight change and the current weight change
@@ -204,7 +205,8 @@ function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, inputs::Array{d
 end
 
 function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer, inputs::Array{dataItem})
-    activations = vcat(forwardInputs.activations[end]..., backwardInputs.activations[end]..., 1)
+    # We don't pass the bias and inputs from the recurrent layer to the last layer.
+    activations = vcat(forwardInputs.activations[end, 1:forwardInputs.outputSize]..., backwardInputs.activations[end, 1:backwardInputs.outputSize]..., 1)
     outputError, δweights = backpropLastLayer(inputs[end].labels, layer.activations, activations, layer.params, layer.stats)
     hiddenError = findHiddenError(layer.weights, outputError, layer.activations, layer.params)
     bptt(forwardInputs, hiddenError[1:forwardInputs.outputSize], inputs);

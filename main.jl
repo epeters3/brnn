@@ -36,7 +36,7 @@ function runWeightedSumClassification()
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
     params::learningParams = learningParams(.09, 10);
-    brnn::brnnNetwork = brnnNetwork(1, 1, 1, params, params, params)
+    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, params, params)
     learn(brnn, dataSet, validation, 25, .0001, 1000)
     
     mkpath("weightedSumClassification")
@@ -47,7 +47,7 @@ function runWeightedSumRegression()
     dataSet = generateWeightedSumData(10000, 10, 20, false)
     validation = generateWeightedSumData(1000, 10, 20, false)
     params::learningParams = learningParams(.01, 10);
-    brnn::brnnNetwork = brnnNetwork(1, 1, 1, params, params, params)
+    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, params, params)
     learn(brnn, dataSet, validation, 25, .0001, 1000)
     
     mkpath("weightedSumRegression")
