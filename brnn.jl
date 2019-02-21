@@ -184,11 +184,11 @@ function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outp
     return error_j, δweights_ij
 end
 
-function bptt(network::brnnNetwork, inputs::Array{dataItem,1})
-    bptt(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer, inputs);
+function bptt(network::brnnNetwork, target::dataItem)
+    bptt(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer, target);
 end
 
-function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, inputs::Array{dataItem,1})
+function bptt(layer::recurrentLayer, errors_k::Array{Float64,1})
     δweights = Array{Array{Float64,2},1}(undef, 0)
     layerError = errors_k
     for i in size(layer.activations, 1) - 1:-1:2
@@ -205,13 +205,13 @@ function bptt(layer::recurrentLayer, errors_k::Array{Float64,1}, inputs::Array{d
     layer.weights .+= totalδweights;
 end
 
-function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer, inputs::Array{dataItem})
+function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer, target::dataItem)
     # We don't pass the bias and inputs from the recurrent layer to the last layer.
     activations = vcat(forwardInputs.activations[end, 1:forwardInputs.outputSize]..., backwardInputs.activations[end, 1:backwardInputs.outputSize]..., 1)
-    outputError, δweights = backpropLastLayer(inputs[end].labels, layer.activations, activations, layer.params, layer.stats)
+    outputError, δweights = backpropLastLayer(target.labels, layer.activations, activations, layer.params, layer.stats)
     hiddenError = findHiddenError(layer.weights, outputError, layer.activations, layer.params)
-    bptt(forwardInputs, hiddenError[1:forwardInputs.outputSize], inputs);
-    bptt(backwardInputs, hiddenError[forwardInputs.outputSize + 1:end - 1], inputs);
+    bptt(forwardInputs, hiddenError[1:forwardInputs.outputSize]);
+    bptt(backwardInputs, hiddenError[forwardInputs.outputSize + 1:end - 1]);
 
     actualδWeights = layer.params.addMomentum(δweights, layer.deltaWeightsPrev)
     layer.deltaWeightsPrev = actualδWeights
@@ -247,7 +247,7 @@ function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patienc
                 target = window[network.recurrentForwardsLayer.τ+1]
                 trainError += SSE(target.labels, network.outputLayer.activations)
                 # println("train: $(target.labels) - $(network.outputLayer.activations)")
-                bptt(network, window);
+                bptt(network, target);
                 popfirst!(window) # Pops from the first
                 timesThrough += 1
             end
