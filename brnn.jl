@@ -76,16 +76,17 @@ end
 
 # Initalize a brnn with i inputs, n hidden nodes, and o output nodes
 function brnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::learningParams, forwardτ::Int64, backwardτ::Int64, outputLearningParams::learningParams, networkLearningParams::learningParams)
-    forwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, forwardτ, true)
-    backwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, backwardτ, false)
+    fullτ = forwardτ + backwardτ
+    forwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, forwardτ, true, fullτ + 1)
+    backwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, backwardτ, false, fullτ + 1)
     outputLayer = forwardLayer(n * 2, o, outputLearningParams)
     stats = learningStatistics()
-    return brnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, forwardτ+backwardτ, stats)
+    return brnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, fullτ , stats)
 end
 
 # Initalize a recurrentLayer with i inputs, and o output nodes, and a recurrent window of size τ.
-function recurrentLayer(i::Int, o::Int, params::learningParams, τ::Int64, forward::Bool)
-    activations = zeros(τ+1, i + o + 1);
+function recurrentLayer(i::Int, o::Int, params::learningParams, τ::Int64, forward::Bool, fullτ::Int64)
+    activations = zeros(fullτ , i + o + 1);
     weights = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
     deltaWeightsPrev = zeros((o, i + o + 1))
     return recurrentLayer(activations, weights, deltaWeightsPrev, i, o, forward, params, τ, layerStatistics())
@@ -140,8 +141,8 @@ end
 
 # Forward Propagation From Inputs to Outputs
 function propagateForward(network::brnnNetwork, inputs::Array{dataItem})
-    propagateForward(network.recurrentForwardsLayer, inputs[1:network.recurrentForwardsLayer.τ])
-    propagateForward(network.recurrentBackwardsLayer, inputs[network.recurrentForwardsLayer.τ+1:end])
+    propagateForward(network.recurrentForwardsLayer, inputs)
+    propagateForward(network.recurrentBackwardsLayer, inputs)
     propagateForward(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
 end
 
