@@ -1,102 +1,102 @@
 module brnn
-using dataset: dataItem, dataSet
+using dataset: DataItem, DataSet
 using plugins: sigmoid, sigmoidPrime, SSE, randGaussian, RPropMomentum
 
 ####################
 #### Data Structures
 ####################
 
-struct learningParams
+struct LearningParams
     activation::Function
     fPrimeNet::Function
     addMomentum::Function
     learningRate::Float64
 end
 
-struct layerStatistics
+struct LayerStatistics
     averageWeightChange::Array{Float64,1}
 end
 
 # Stores data about each epoch
-struct learningStatistics
+struct LearningStatistics
     valErrors::Array{Float64,1}
     trainErrors::Array{Float64,1}
 end
 
-mutable struct forwardLayer
+mutable struct ForwardLayer
     activations::Array{Float64}
     weights::Array{Float64,2}
     deltaWeightsPrev::Array{Float64,2}
     inputSize::Int
     outputSize::Int
-    params::learningParams
-    stats::layerStatistics
+    params::LearningParams
+    stats::LayerStatistics
 end
 
-mutable struct recurrentLayer
+mutable struct RecurrentLayer
     activations::Array{Float64,2}
     weights::Array{Float64,2} #weights only needed for one timestep
     deltaWeightsPrev::Array{Float64,2}
     inputSize::Int
     outputSize::Int
     forward::Bool
-    params::learningParams
+    params::LearningParams
     τ::Int64
-    stats::layerStatistics
+    stats::LayerStatistics
 end
 
-mutable struct brnnNetwork
-    recurrentForwardsLayer::recurrentLayer
-    recurrentBackwardsLayer::recurrentLayer
-    outputLayer::forwardLayer
+mutable struct BrnnNetwork
+    recurrentForwardsLayer::RecurrentLayer
+    recurrentBackwardsLayer::RecurrentLayer
+    outputLayer::ForwardLayer
     inputSize::Int
     hiddenSize::Int
     outputSize::Int
-    params::learningParams
+    params::LearningParams
     τ::Int64 # This is the sum of recurrentForwardsLayer.τ and recurrentBackwardsLayer.τ
-    stats::learningStatistics
+    stats::LearningStatistics
 end
 
 #################
 #### Constructors
 #################
 
-function learningParams(learningRate::Float64)
+function LearningParams(learningRate::Float64)
     momentumF = RPropMomentum(.5, 1.2)
-    return learningParams(sigmoid, sigmoidPrime, momentumF, learningRate)
+    return LearningParams(sigmoid, sigmoidPrime, momentumF, learningRate)
 end
 
-function layerStatistics()
-    return layerStatistics([0])
+function LayerStatistics()
+    return LayerStatistics([0])
 end
 
-function learningStatistics()
-    return learningStatistics([], [])
+function LearningStatistics()
+    return LearningStatistics([], [])
 end
 
 # Initalize a brnn with i inputs, n hidden nodes, and o output nodes
-function brnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::learningParams, forwardτ::Int64, backwardτ::Int64, outputLearningParams::learningParams, networkLearningParams::learningParams)
-    forwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, forwardτ, true)
-    backwardRecurrentLayer = recurrentLayer(i, n, hiddenLearningParams, backwardτ, false)
-    outputLayer = forwardLayer(n * 2, o, outputLearningParams)
-    stats = learningStatistics()
-    return brnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, forwardτ+backwardτ, stats)
+function BrnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::LearningParams, forwardτ::Int64, backwardτ::Int64, outputLearningParams::LearningParams, networkLearningParams::LearningParams)
+    forwardRecurrentLayer = RecurrentLayer(i, n, hiddenLearningParams, forwardτ, true)
+    backwardRecurrentLayer = RecurrentLayer(i, n, hiddenLearningParams, backwardτ, false)
+    outputLayer = ForwardLayer(n * 2, o, outputLearningParams)
+    stats = LearningStatistics()
+    return BrnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, forwardτ+backwardτ, stats)
 end
 
-# Initalize a recurrentLayer with i inputs, and o output nodes, and a recurrent window of size τ.
-function recurrentLayer(i::Int, o::Int, params::learningParams, τ::Int64, forward::Bool)
+# Initalize a RecurrentLayer with i inputs, and o output nodes, and a recurrent window of size τ.
+function RecurrentLayer(i::Int, o::Int, params::LearningParams, τ::Int64, forward::Bool)
     activations = zeros(τ+1, i + o + 1);
     weights = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
     deltaWeightsPrev = zeros((o, i + o + 1))
-    return recurrentLayer(activations, weights, deltaWeightsPrev, i, o, forward, params, τ, layerStatistics())
+    return RecurrentLayer(activations, weights, deltaWeightsPrev, i, o, forward, params, τ, LayerStatistics())
 end
 
 # Initalize a regular forward layer with i inputs, and o output nodes
-function forwardLayer(i::Int, o::Int, params::learningParams)
+function ForwardLayer(i::Int, o::Int, params::LearningParams)
     activations = Array{Float64}(undef, o)
     weights = randGaussian((o, i + 1), 0.0, 0.1)
     deltaWeightsPrev = zeros((o, i + 1))
-    return forwardLayer(activations, weights, deltaWeightsPrev, i, o, params, layerStatistics())
+    return ForwardLayer(activations, weights, deltaWeightsPrev, i, o, params, LayerStatistics())
 end
 
 ########################
@@ -108,7 +108,7 @@ function propagateForward(weights::Array{Float64,2}, inputs::Array{Float64,1}, a
 end
 
 # Data items are the input to the recurrent layer
-function propagateForward(layer::recurrentLayer, inputs::Array{dataItem})
+function propagateForward(layer::RecurrentLayer, inputs::Array{DataItem})
     # The input to the recurrent layer is the input concatenated with the recurrent layer's previous activation and a bias
     iterable = undef
     if layer.forward
@@ -132,14 +132,14 @@ end
 
 # The outputs of forward and backward recurrent layers are the inputs to the last layer
 # We don't pass the inputs and bias to the last layer.
-function propagateForward(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer)
+function propagateForward(layer::ForwardLayer, forwardInputs::RecurrentLayer, backwardInputs::RecurrentLayer)
     forwardActivations = forwardInputs.activations[end, 1:forwardInputs.outputSize]
     backwardActivations = backwardInputs.activations[end, 1:backwardInputs.outputSize]
     layer.activations = propagateForward(layer.weights, vcat(forwardActivations, backwardActivations, 1), layer.params.activation)
 end
 
 # Forward Propagation From Inputs to Outputs
-function propagateForward(network::brnnNetwork, inputs::Array{dataItem})
+function propagateForward(network::BrnnNetwork, inputs::Array{DataItem})
     propagateForward(network.recurrentForwardsLayer, inputs[1:network.recurrentForwardsLayer.τ])
     propagateForward(network.recurrentBackwardsLayer, inputs[network.recurrentForwardsLayer.τ+1:end])
     propagateForward(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
@@ -149,20 +149,20 @@ end
 #### Backpropagation
 ####################
 
-function findOutputError(targets::Array{Float64,1}, outputs::Array{Float64,1}, params::learningParams)
+function findOutputError(targets::Array{Float64,1}, outputs::Array{Float64,1}, params::LearningParams)
     return (targets .- outputs) .* params.fPrimeNet(outputs)
 end
 
-function findHiddenError(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, params_j::learningParams)
+function findHiddenError(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, params_j::LearningParams)
     return (transpose(weights_jk) * errors_k)  .* params_j.fPrimeNet(outputs_j)
 end
 
-function findWeightChanges(error_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams)::Array{Float64,2}
+function findWeightChanges(error_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::LearningParams)::Array{Float64,2}
     return (params_j.learningRate * error_j) * transpose(outputs_i)
 end
 
 #j denotes current layer, i denotes input layer
-function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics)
+function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::LearningParams, stats::LayerStatistics)
     #error, targets, outputs, are all j x 1 arrays
     error_j = findOutputError(targets_j, outputs_j, params_j)
     #error is j x 1, outputs is 1 x i (after transpose)
@@ -172,7 +172,7 @@ function backpropLastLayer(targets_j::Array{Float64,1}, outputs_j::Array{Float64
 end
 
 #j denotes current layer, i denotes input layer, k denotes following layer
-function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::learningParams, stats::layerStatistics, outputSize::Int64)
+function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outputs_j::Array{Float64,1}, outputs_i::Array{Float64,1}, params_j::LearningParams, stats::LayerStatistics, outputSize::Int64)
     #error_j is j x 1, weights_jk should be k x j, errors_k should be k x 1, outputs_j should be j x 1
     # println("outputs_j $(size(outputs_j[1:outputSize]))")
     # println("weights_jk $(size(weights_jk[:, 1:outputSize]))")
@@ -184,11 +184,11 @@ function backprop(weights_jk::Array{Float64,2}, errors_k::Array{Float64,1}, outp
     return error_j, δweights_ij
 end
 
-function bptt(network::brnnNetwork, target::dataItem)
+function bptt(network::BrnnNetwork, target::DataItem)
     bptt(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer, target);
 end
 
-function bptt(layer::recurrentLayer, errors_k::Array{Float64,1})
+function bptt(layer::RecurrentLayer, errors_k::Array{Float64,1})
     δweights = Array{Array{Float64,2},1}(undef, 0)
     layerError = errors_k
     for i in size(layer.activations, 1) - 1:-1:2
@@ -205,7 +205,7 @@ function bptt(layer::recurrentLayer, errors_k::Array{Float64,1})
     layer.weights .+= totalδweights;
 end
 
-function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs::recurrentLayer, target::dataItem)
+function bptt(layer::ForwardLayer, forwardInputs::RecurrentLayer, backwardInputs::RecurrentLayer, target::DataItem)
     # We don't pass the bias and inputs from the recurrent layer to the last layer.
     activations = vcat(forwardInputs.activations[end, 1:forwardInputs.outputSize]..., backwardInputs.activations[end, 1:backwardInputs.outputSize]..., 1)
     outputError, δweights = backpropLastLayer(target.labels, layer.activations, activations, layer.params, layer.stats)
@@ -229,8 +229,8 @@ Train the network from a dataset
 `min_delta`:    Minimum change in the validation accuracy to qualify as an improvement,
                 i.e. an absolute change of less than min_delta, will count as no improvement.
 =#
-function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patience::Int, minDelta::Float64, maxEpochs::Int)
-    window = Array{dataItem}(undef, 0)
+function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patience::Int, minDelta::Float64, maxEpochs::Int)
+    window = Array{DataItem}(undef, 0)
     timesThrough = 0
     trainError = 0
     prevValError = Inf64
@@ -254,7 +254,7 @@ function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patienc
         end
         
         # Validate the model
-        window = Array{dataItem}(undef, 0)
+        window = Array{DataItem}(undef, 0)
         for item in validation.examples
             push!(window, item) # Appends to the end
             if length(window) == network.τ
@@ -287,7 +287,7 @@ function learn(network::brnnNetwork, data::dataSet, validation::dataSet, patienc
 end 
 
 # Test the network from a dataset
-function test(network::brnnNetwork, data::dataSet)
+function test(network::BrnnNetwork, data::DataSet)
 
 end
 

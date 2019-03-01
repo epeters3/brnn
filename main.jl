@@ -8,11 +8,11 @@ Source: https://stackoverflow.com/questions/51824403/import-modules-and-function
 =#
 push!(LOAD_PATH, "./")
 # Import local project modules
-import brnn: brnnNetwork, learn, learningParams
-import dataset: generateWeightedSumData, generateDparityData, dataSet
+import brnn: BrnnNetwork, learn, LearningParams
+import dataset: generateWeightedSumData, generateDparityData, DataSet
 import ml_plots: displayLayerStatistics, displayLearningStatistics
 
-function displayGraphs(network::brnnNetwork, namePrefix::String)
+function displayGraphs(network::BrnnNetwork, namePrefix::String)
     displayLayerStatistics(network.outputLayer.stats, "$(namePrefix)output")
     displayLayerStatistics(network.recurrentBackwardsLayer.stats, "$(namePrefix)backward")
     displayLayerStatistics(network.recurrentForwardsLayer.stats, "$(namePrefix)forward")
@@ -24,8 +24,8 @@ end
 function runDparity()
     dataSet = generateDparityData(100, [1, 0, -1])
     validation = generateDparityData(10, [1, 0, -1])
-    params::learningParams = learningParams(.1);
-    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, 2, 2, params, params)
+    params::LearningParams = LearningParams(.1);
+    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 2, 2, params, params)
     learn(brnn, dataSet, validation, 20, .0001, 1000)
     mkpath("dparity")
     displayGraphs(brnn, "dparity/")
@@ -35,8 +35,8 @@ end
 function runWeightedSumClassification()
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
-    params::learningParams = learningParams(.09);
-    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, 10, 20, params, params)
+    params::LearningParams = LearningParams(.09);
+    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 10, 20, params, params)
     learn(brnn, dataSet, validation, 25, .0001, 1000)
     
     mkpath("weightedSumClassification")
@@ -46,8 +46,8 @@ end
 function runWeightedSumRegression()
     dataSet = generateWeightedSumData(10000, 10, 20, false)
     validation = generateWeightedSumData(1000, 10, 20, false)
-    params::learningParams = learningParams(.01);
-    brnn::brnnNetwork = brnnNetwork(1, 10, 1, params, 10, 20, params, params)
+    params::LearningParams = LearningParams(.01);
+    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 10, 20, params, params)
     learn(brnn, dataSet, validation, 25, .0001, 1000)
     
     mkpath("weightedSumRegression")
