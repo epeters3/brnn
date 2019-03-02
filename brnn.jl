@@ -62,7 +62,7 @@ end
 #### Constructors
 #################
 
-function learningParams(learningRate::Float64, keepStats::Bool=true)
+function learningParams(learningRate::Float64; keepStats::Bool=true)
     momentumF = RPropMomentum(.5, 1.2)
     return learningParams(sigmoid, sigmoidPrime, momentumF, learningRate, keepStats)
 end
