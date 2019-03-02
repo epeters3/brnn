@@ -1,5 +1,6 @@
 module dataset
 import Base.show
+import CSV
 
 struct dataItem
     features::Array{Float64,1}
@@ -96,5 +97,37 @@ function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindow
 
     return data
 end
+
+
+function getGesturesDataSet()
+    return readFromCSVs(["../EMG_data_for_gestures-master/01/1_raw_data_13-12_22.03.16.txt"], ["channel1","channel2","channel3","channel4","channel5","channel6","channel7","channel8"], "class")
+end
+function readFromCSVs(files::Array{String,1}, validIndicies::Array{String,1}, classIndex::String)
+    dataset = dataSet(Array{dataItem,1}(undef, 0))
+    nInputFeatures = length(validIndicies)
+    validSymbols = Array{Symbol,1}(undef, nInputFeatures)
+    classSymbol = Symbol(classIndex)
+    for index in 1:nInputFeatures
+        validSymbols[index] = Symbol(validIndicies[index])
+    end
+    for file in files;
+        for row in CSV.File(file; delim = '\t')
+            data = dataItem(Array{Float64,1}(undef, nInputFeatures), Array{Float64,1}(undef, 1))
+
+
+            for column in 1:nInputFeatures
+                data.features[column] = getproperty(row, validSymbols[column])
+            end
+            data.labels[1] = getproperty(row, classSymbol)
+            print(data)
+            push!(dataset.examples, data)
+            break;
+
+        end
+    end
+
+    return dataset
+end
+
 
 end

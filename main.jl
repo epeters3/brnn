@@ -9,7 +9,7 @@ Source: https://stackoverflow.com/questions/51824403/import-modules-and-function
 push!(LOAD_PATH, "./")
 # Import local project modules
 import brnn: brnnNetwork, learn, learningParams
-import dataset: generateWeightedSumData, generateDparityData, dataSet
+import dataset: generateWeightedSumData, generateDparityData, dataSet, getGesturesDataSet
 import ml_plots: displayLayerStatistics, displayLearningStatistics
 
 function displayGraphs(network::brnnNetwork, namePrefix::String)
@@ -55,8 +55,9 @@ function runWeightedSumRegression()
 end
 
 function run()
+    getGesturesDataSet()
     #runDparity()
-    runWeightedSumClassification();
+    #runWeightedSumClassification();
     #runWeightedSumRegression();
 end
 
