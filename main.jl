@@ -7,10 +7,12 @@ local module appropriately.
 Source: https://stackoverflow.com/questions/51824403/import-modules-and-functions-from-a-file-in-a-specific-directory-in-julia-1-0
 =#
 push!(LOAD_PATH, "./")
+push!(LOAD_PATH, "./brnn")
 # Import local project modules
-import brnn: BrnnNetwork, learn, LearningParams
-import dataset: generateWeightedSumData, generateDparityData, DataSet
-import ml_plots: displayLayerStatistics, displayLearningStatistics
+using brnn: BrnnNetwork, LearningParams
+using train: learn
+using dataset: generateWeightedSumData, generateDparityData, DataSet
+using ml_plots: displayLayerStatistics, displayLearningStatistics
 
 function displayGraphs(network::BrnnNetwork, namePrefix::String)
     displayLayerStatistics(network.outputLayer.stats, "$(namePrefix)output")

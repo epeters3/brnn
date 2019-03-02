@@ -62,9 +62,9 @@ end
 
 
 
-##########
+#############
 #### Momentum
-##########
+#############
 
 function RPropMomentum(n_minus::Float64, n_plus::Float64)
     rprop = function (currentδWeights::Array{Float64,2}, prevδWeights::Array{Float64,2})
@@ -85,12 +85,6 @@ function SimpleMomentum(momentum::Float64)
     end
     return momentumF
 end
-
-
-
-
-
-
 
 end # module plugins
 
