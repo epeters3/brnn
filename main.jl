@@ -54,8 +54,21 @@ function runWeightedSumRegression()
     displayGraphs(brnn, "weightedSumRegression/")
 end
 
+function runGesturesClassification()
+    dataSet = getGesturesDataSet(1:2)
+    println(length(dataSet.examples))
+    validationSet = getGesturesDataSet(31:32)
+    params::learningParams = learningParams(.01,keepStats=false);
+    brnn::brnnNetwork = brnnNetwork(8, 20, 8, params, 10, 10, params, params)
+
+    learn(brnn, dataSet, validationSet, 25, .0001, 100)
+
+    mkpath("gesturesClassification")
+    displayGraphs(brnn, "gesturesClassification/")
+   
+end
 function run()
-    getGesturesDataSet()
+    runGesturesClassification()
     #runDparity()
     #runWeightedSumClassification();
     #runWeightedSumRegression();

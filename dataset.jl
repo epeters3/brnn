@@ -1,7 +1,7 @@
 module dataset
 import Base.show
 import CSV
-
+import Glob
 struct dataItem
     features::Array{Float64,1}
     labels::Array{Float64,1}
@@ -11,12 +11,19 @@ mutable struct dataSet
     examples::Array{dataItem,1}
 end
 
+function dataSet(numItems::Int)
+    return dataSet(Array{dataItem,1}(undef, numItems))
+end
+function dataItem(numFeatures::Int, numClasses::Int)
+    return dataItem(zeros(numFeatures), zeros(numClasses))
+end
+
 function Base.show(io::IO, item::dataItem)
     print("Data Item: features: $(item.features), labels: $(item.labels)")
 end
 
 function generateData(numItems::Int, inputDims::Int, outputDims::Int)
-    data::dataSet = dataSet(Array{dataItem}(undef, numItems))
+    data::dataSet = dataSet(numItems)
     for i in 1:numItems;
         data.examples[i] = dataItem([rand(),rand() * i,rand() * i * i], [rand() / 5])
     end
@@ -33,7 +40,7 @@ at the beginning or end of the set to compute the parity using parityIndices (ca
 in a naiive way), the label value is 0.0.
 """
 function generateDparityData(numItems::Int, parityIndices::Array{Int})
-    data::dataSet = dataSet(Array{dataItem,1}(undef, numItems))
+    data::dataSet = dataSet(numItems)
     maxParityIndex = maximum(abs.(parityIndices))
     randBits = rand(0.0:1.0, numItems)
 
@@ -79,7 +86,7 @@ weighted sum of the inputs within a window of `leftWindowSize` frames to the lef
 `rightWindowSize` frames to the right with respect to the current frame.
 """
 function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindowSize::Int, isClassification::Bool)
-    data::dataSet = dataSet(Array{dataItem,1}(undef, numItems))
+    data::dataSet = dataSet(numItems)
     randFloats = rand(Float64, numItems)
     # Make sure these args are positive
     leftWindowSize = abs(leftWindowSize)
@@ -99,11 +106,23 @@ function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindow
 end
 
 
-function getGesturesDataSet()
-    return readFromCSVs(["../EMG_data_for_gestures-master/01/1_raw_data_13-12_22.03.16.txt"], ["channel1","channel2","channel3","channel4","channel5","channel6","channel7","channel8"], "class")
+function getGesturesDataSet(range::UnitRange{Int64})
+    filesToRead = Array{String,1}(undef, 0)
+    startPath = "../EMG_data_for_gestures-master"
+    for index in range
+        value::String = "$index"
+        if length(value) == 1
+            value = "0$value"
+        end
+        for file in Glob.glob("$startPath/$value/*")
+            push!(filesToRead, file)
+        end
+    end 
+    return readFromCSVs(filesToRead, ["channel1","channel2","channel3","channel4","channel5","channel6","channel7","channel8"], "class")
 end
+
 function readFromCSVs(files::Array{String,1}, validIndicies::Array{String,1}, classIndex::String)
-    dataset = dataSet(Array{dataItem,1}(undef, 0))
+    dataset = dataSet(0)
     nInputFeatures = length(validIndicies)
     validSymbols = Array{Symbol,1}(undef, nInputFeatures)
     classSymbol = Symbol(classIndex)
@@ -112,20 +131,21 @@ function readFromCSVs(files::Array{String,1}, validIndicies::Array{String,1}, cl
     end
     for file in files;
         for row in CSV.File(file; delim = '\t')
-            data = dataItem(Array{Float64,1}(undef, nInputFeatures), Array{Float64,1}(undef, 1))
-
-
+            data = dataItem(nInputFeatures, 8)
             for column in 1:nInputFeatures
                 data.features[column] = getproperty(row, validSymbols[column])
             end
-            data.labels[1] = getproperty(row, classSymbol)
-            print(data)
-            push!(dataset.examples, data)
-            break;
+            value::Int64 = 0
+            try
+                value = getproperty(row, classSymbol)
+            catch
+                value = 0
+            end
+            data.labels[value + 1] = 1
 
+            push!(dataset.examples, data)
         end
     end
-
     return dataset
 end
 

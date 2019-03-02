@@ -11,6 +11,7 @@ struct learningParams
     fPrimeNet::Function
     addMomentum::Function
     learningRate::Float64
+    keepStats::Bool
 end
 
 struct layerStatistics
@@ -61,9 +62,9 @@ end
 #### Constructors
 #################
 
-function learningParams(learningRate::Float64)
+function learningParams(learningRate::Float64, keepStats::Bool=true)
     momentumF = RPropMomentum(.5, 1.2)
-    return learningParams(sigmoid, sigmoidPrime, momentumF, learningRate)
+    return learningParams(sigmoid, sigmoidPrime, momentumF, learningRate, keepStats)
 end
 
 function layerStatistics()
@@ -200,7 +201,9 @@ function bptt(layer::recurrentLayer, errors_k::Array{Float64,1})
     end
     # Momentum takes into account the last weight change and the current weight change
     totalδweights = layer.params.addMomentum(sum(δweights) ./ length(δweights), layer.deltaWeightsPrev)
-    push!(layer.stats.averageWeightChange, sum(totalδweights) / length(totalδweights));
+    if layer.params.keepStats
+        push!(layer.stats.averageWeightChange, sum(totalδweights) / length(totalδweights));
+    end
 
     layer.deltaWeightsPrev = totalδweights
     layer.weights .+= totalδweights;
@@ -210,13 +213,15 @@ function bptt(layer::forwardLayer, forwardInputs::recurrentLayer, backwardInputs
     # We don't pass the bias and inputs from the recurrent layer to the last layer.
     activations = vcat(forwardInputs.activations[end, 1:forwardInputs.outputSize]..., backwardInputs.activations[end, 1:backwardInputs.outputSize]..., 1)
     outputError, δweights = backpropLastLayer(target.labels, layer.activations, activations, layer.params, layer.stats)
-    hiddenError = findHiddenError(layer.weights, outputError, layer.activations, layer.params)
+    hiddenError = findHiddenError(layer.weights, outputError, activations, layer.params) #note that the layer params should actually be the layer params for each of the forward/backward inputs
     bptt(forwardInputs, hiddenError[1:forwardInputs.outputSize]);
     bptt(backwardInputs, hiddenError[forwardInputs.outputSize + 1:end - 1]);
 
     actualδWeights = layer.params.addMomentum(δweights, layer.deltaWeightsPrev)
     layer.deltaWeightsPrev = actualδWeights
-    push!(layer.stats.averageWeightChange, sum(actualδWeights) / length(actualδWeights));
+    if layer.params.keepStats
+        push!(layer.stats.averageWeightChange, sum(actualδWeights) / length(actualδWeights));
+    end
     layer.weights .+= actualδWeights;
 end
 
