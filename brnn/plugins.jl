@@ -29,6 +29,8 @@ linear(nets::Array{Float64}) = nets
 
 linearPrime(outputs::Array{Float64}) = ones(size(outputs))
 
+tanhPrime(outputs::Array{Float64}) = 1 .- tanh.(outputs).^2
+
 ###################
 #### Loss Functions
 ###################
