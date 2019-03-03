@@ -230,7 +230,8 @@ function _bptt(layer::ConnectedLayer, forwardInputs::RecurrentLayer, backwardInp
     layer.deltaWeightsPrev = actualδWeights
     if layer.params.keepStats
         push!(layer.stats.averageWeightChange, sum(actualδWeights) / length(actualδWeights));
-    end layer.weights .+= actualδWeights;
+    end 
+    layer.weights .+= actualδWeights;
 end
 
 end # module brnn
