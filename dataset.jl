@@ -2,30 +2,34 @@ module dataset
 import Base.show
 import CSV
 import Glob
-struct dataItem
+
+struct DataItem
     features::Array{Float64,1}
     labels::Array{Float64,1}
 end
 
-mutable struct dataSet
-    examples::Array{dataItem,1}
+mutable struct DataSet
+    examples::Array{DataItem,1}
 end
 
-function dataSet(numItems::Int)
-    return dataSet(Array{dataItem,1}(undef, numItems))
+function DataSet(numItems::Int)
+    return DataSet(Array{DataItem,1}(undef, numItems))
 end
-function dataItem(numFeatures::Int, numClasses::Int)
-    return dataItem(zeros(numFeatures), zeros(numClasses))
+function DataItem(numFeatures::Int, numClasses::Int)
+    return DataItem(zeros(numFeatures), zeros(numClasses))
 end
 
-function Base.show(io::IO, item::dataItem)
+
+function Base.show(io::IO, item::DataItem)
+
     print("Data Item: features: $(item.features), labels: $(item.labels)")
 end
 
 function generateData(numItems::Int, inputDims::Int, outputDims::Int)
-    data::dataSet = dataSet(numItems)
+    data::DataSet = DataSet(numItems)
+
     for i in 1:numItems;
-        data.examples[i] = dataItem([rand(),rand() * i,rand() * i * i], [rand() / 5])
+        data.examples[i] = DataItem([rand(),rand() * i,rand() * i * i], [rand() / 5])
     end
     return data
 end
@@ -40,7 +44,7 @@ at the beginning or end of the set to compute the parity using parityIndices (ca
 in a naiive way), the label value is 0.0.
 """
 function generateDparityData(numItems::Int, parityIndices::Array{Int})
-    data::dataSet = dataSet(numItems)
+    data::DataSet = DataSet(numItems)
     maxParityIndex = maximum(abs.(parityIndices))
     randBits = rand(0.0:1.0, numItems)
 
@@ -54,7 +58,7 @@ function generateDparityData(numItems::Int, parityIndices::Array{Int})
             end
             label = label % 2 == 0 ? 0 : 1
         end
-        data.examples[i] = dataItem([randBits[i]], [label])
+        data.examples[i] = DataItem([randBits[i]], [label])
     end
 
     return data
@@ -86,7 +90,8 @@ weighted sum of the inputs within a window of `leftWindowSize` frames to the lef
 `rightWindowSize` frames to the right with respect to the current frame.
 """
 function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindowSize::Int, isClassification::Bool)
-    data::dataSet = dataSet(numItems)
+
+    data::DataSet = DataSet( numItems)
     randFloats = rand(Float64, numItems)
     # Make sure these args are positive
     leftWindowSize = abs(leftWindowSize)
@@ -99,7 +104,7 @@ function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindow
         if isClassification
             label = label <= 0.5 ? 0.0 : 1.0
         end
-        data.examples[i] = dataItem([randFloats[i]], [label])
+        data.examples[i] = DataItem([randFloats[i]], [label])
     end
 
     return data
@@ -122,7 +127,7 @@ function getGesturesDataSet(range::UnitRange{Int64})
 end
 
 function readFromCSVs(files::Array{String,1}, validIndicies::Array{String,1}, classIndex::String)
-    dataset = dataSet(0)
+    dataset = DataSet(0)
     nInputFeatures = length(validIndicies)
     validSymbols = Array{Symbol,1}(undef, nInputFeatures)
     classSymbol = Symbol(classIndex)
@@ -131,7 +136,7 @@ function readFromCSVs(files::Array{String,1}, validIndicies::Array{String,1}, cl
     end
     for file in files;
         for row in CSV.File(file; delim = '\t')
-            data = dataItem(nInputFeatures, 8)
+            data = DataItem(nInputFeatures, 8)
             for column in 1:nInputFeatures
                 data.features[column] = getproperty(row, validSymbols[column])
             end
