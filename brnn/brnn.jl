@@ -58,6 +58,7 @@ end
 mutable struct RecurrentLayer
     activations::Array{Float64,2}
     weights::Array{Float64,2} #weights only needed for one timestep
+    δweights::Array{Array{Float64,2},1}
     deltaWeightsPrev::Array{Float64,2}
     inputSize::Int
     outputSize::Int
@@ -72,7 +73,8 @@ function RecurrentLayer(i::Int, o::Int, params::LearningParams, τ::Int64, isFor
     activations = zeros(τ+1, i + o + 1);
     weights = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
     deltaWeightsPrev = zeros((o, i + o + 1))
-    return RecurrentLayer(activations, weights, deltaWeightsPrev, i, o, isForward, params, τ, LayerStatistics())
+    δweights = [zeros(o,i+o+1) for k = 1:τ+1]
+    return RecurrentLayer(activations, weights, δweights, deltaWeightsPrev, i, o, isForward, params, τ, LayerStatistics())
 end
 
 
@@ -278,16 +280,16 @@ function _bpttAnyRecurrent(layer::AnyRecurrentLayer, errors_k::Array{Float64,1})
 end
 
 function _bpttRecurrent(layer::RecurrentLayer, errors_k::Array{Float64,1})
-    δweights = Array{Array{Float64,2},1}(undef, 0)
+    
     layerError = errors_k
     for i in size(layer.activations, 1) - 1:-1:2
         # The persisted activation vector already contains the
         # appropriate input vector and bias value so just pass it as is.
         layerError, δweights_ij = _backprop(layer.weights, layerError, layer.activations[i, :], layer.activations[i - 1, :], layer.params, layer.stats, layer.outputSize)
-        push!(δweights, δweights_ij) 
+        layer.δweights[i] = δweights_ij
     end
     # Momentum takes into account the last weight change and the current weight change
-    totalδweights = layer.params.addMomentum(sum(δweights) ./ length(δweights), layer.deltaWeightsPrev)
+    totalδweights = layer.params.addMomentum(sum(layer.δweights) ./ length(layer.δweights), layer.deltaWeightsPrev)
     if layer.params.keepStats
         push!(layer.stats.averageWeightChange, sum(totalδweights) / length(totalδweights));
     end

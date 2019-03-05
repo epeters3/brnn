@@ -13,7 +13,7 @@ Train the network from a dataset
 `min_delta`:    Minimum change in the validation accuracy to qualify as an improvement,
                 i.e. an absolute change of less than min_delta, will count as no improvement.
 =#
-function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patience::Int, minDelta::Float64, maxEpochs::Int)
+function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patience::Int, minDelta::Float64, maxEpochs::Int, targetOffset::Int)
     window = Array{DataItem}(undef, 0)
     timesThrough = 0
     trainError = 0
@@ -28,7 +28,7 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patienc
             push!(window, item) # Appends to the end
             if length(window) == network.τ
                 propagateForward(network, window);
-                target = window[network.recurrentForwardsLayer.τ+1]
+                target = window[targetOffset]
                 trainError += SSE(target.labels, network.outputLayer.activations)
                 # println("train: $(target.labels) - $(network.outputLayer.activations)")
                 bptt(network, target);
@@ -43,7 +43,7 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patienc
             push!(window, item) # Appends to the end
             if length(window) == network.τ
                 propagateForward(network, window);
-                target = window[network.recurrentForwardsLayer.τ+1]
+                target = window[targetOffset]
                 valError += SSE(target.labels, network.outputLayer.activations)
                 # println("validate: $(target.labels) - $(network.outputLayer.activations)")
                 popfirst!(window) # Pops from the first

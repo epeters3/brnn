@@ -30,7 +30,7 @@ function runDparity()
     validation = generateDparityData(10, [1, 0, -1])
     params::LearningParams = LearningParams(.1);
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 2, 2, params, params, false)
-    learn(brnn, dataSet, validation, 20, .0001, 1000)
+    learn(brnn, dataSet, validation, 20, .0001, 1000, 3)
     mkpath("dparity")
     displayGraphs(brnn, "dparity/")
 end
@@ -39,9 +39,9 @@ end
 function runWeightedSumClassification()
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
-    params::LearningParams = LearningParams(.09);
+    params::LearningParams = LearningParams(.01);
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 10, 20, params, params, false)
-    learn(brnn, dataSet, validation, 25, .0001, 1000)
+    learn(brnn, dataSet, validation, 25, .0001, 1000, 11)
     
     mkpath("weightedSumClassification")
     displayGraphs(brnn, "weightedSumClassification/")
@@ -52,7 +52,7 @@ function runWeightedSumRegression()
     validation = generateWeightedSumData(1000, 10, 20, false)
     params::LearningParams = LearningParams(.01);
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 10, 20, params, params, false)
-    learn(brnn, dataSet, validation, 25, .0001, 1000)
+    learn(brnn, dataSet, validation, 25, .0001, 1000, 11)
     
     mkpath("weightedSumRegression")
     displayGraphs(brnn, "weightedSumRegression/")
@@ -62,19 +62,19 @@ function runGesturesClassification()
     dataSet = getGesturesDataSet(1:1)
     println(length(dataSet.examples))
     validationSet = getGesturesDataSet(31:31)
-    params::LearningParams = LearningParams(.01,keepStats=false);
+    params::LearningParams = LearningParams(.01, keepStats = false);
     brnn::BrnnNetwork = BrnnNetwork(8, 20, 8, params, 10, 10, params, params, false)
 
-    learn(brnn, dataSet, validationSet, 25, .0001, 100)
+    learn(brnn, dataSet, validationSet, 25, .0001, 100, 11)
 
     mkpath("gesturesClassification")
     displayGraphs(brnn, "gesturesClassification/")
    
 end
 function run()
-    runGesturesClassification()
+    #runGesturesClassification()
     #runDparity()
-    #runWeightedSumClassification();
+    runWeightedSumClassification();
     #runWeightedSumRegression();
 end
 
