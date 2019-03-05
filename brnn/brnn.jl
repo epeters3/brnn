@@ -1,6 +1,6 @@
 module brnn
 using dataset: DataItem
-using plugins: sigmoid, sigmoidPrime, tanhPrime, randGaussian, RPropMomentum
+using plugins: sigmoid, sigmoidPrime, tanH, tanHPrime, randGaussian, RPropMomentum
 
 struct LearningParams
     activation::Function
@@ -13,6 +13,11 @@ end
 function LearningParams(learningRate::Float64; keepStats::Bool=true)
     momentumF = RPropMomentum(.5, 1.2)
     return LearningParams(sigmoid, sigmoidPrime, momentumF, learningRate, keepStats)
+end
+
+function LearningParams(learningRate::Float64, activation::Function, fPrimeNet::Function; keepStats::Bool=true)
+    momentumF = RPropMomentum(.5, 1.2)
+    return LearningParams(activation, fPrimeNet, momentumF, learningRate, keepStats)
 end
 
 
@@ -79,9 +84,14 @@ end
 
 
 mutable struct RecurrentLayerLstm
-    activations::Array{Float64,2}
-    states::Array{Float64,2}
-    weightsC::Array{Float64,2} #weights only needed for one timestep
+    activations::Array{Float64,2} # The final activation output from the LSTM: h
+    states::Array{Float64,2} # the final C values
+    activationsC::Array{Float64,2} # The candidate values: C̃
+    activationsI::Array{Float64,2}
+    activationsF::Array{Float64,2}
+    activationsO::Array{Float64,2}
+    netsC::Array{Float64,2} # The pre-activated candidate values
+    weightsC::Array{Float64,2}
     weightsI::Array{Float64,2}
     weightsF::Array{Float64,2}
     weightsO::Array{Float64,2}
@@ -101,6 +111,11 @@ end
 function RecurrentLayerLstm(i::Int, o::Int, params::LearningParams, τ::Int64, isForward::Bool)
     activations = zeros(τ+1, i + o + 1);
     states = zeros(τ+1, o);
+    activationsC = zeros(τ+1, o);
+    activationsI = zeros(τ+1, o);
+    activationsF = zeros(τ+1, o);
+    activationsO = zeros(τ+1, o);
+    netsC = zeros(τ+1, o);
     weightsC = randGaussian((o, i + o + 1), 0.0, 0.1) #There is a weight to every input output and 
     weightsI = randGaussian((o, i + o + 1), 0.0, 0.1) 
     weightsF = randGaussian((o, i + o + 1), 0.0, 0.1) 
@@ -109,7 +124,7 @@ function RecurrentLayerLstm(i::Int, o::Int, params::LearningParams, τ::Int64, i
     deltaWeightsPrevI = zeros((o, i + o + 1))
     deltaWeightsPrevF = zeros((o, i + o + 1))
     deltaWeightsPrevO = zeros((o, i + o + 1))
-    return RecurrentLayer(activations, states, weightsC, weightsI, weightsF, weightsO, deltaWeightsPrevC, deltaWeightsPrevI, deltaWeightsPrevF, deltaWeightsPrevO, i, o, isForward, params, τ, LayerStatistics())
+    return RecurrentLayerLstm(activations, states, activationsC, activationsI, activationsF, activationsO, netsC, weightsC, weightsI, weightsF, weightsO, deltaWeightsPrevC, deltaWeightsPrevI, deltaWeightsPrevF, deltaWeightsPrevO, i, o, isForward, params, τ, LayerStatistics())
 end
 
 
@@ -197,25 +212,33 @@ function _propForwardRecurrentLstm(layer::RecurrentLayerLstm, inputs::Array{Data
         numFeatures = length(input.features)
         layer.activations[i, end-numFeatures:end] = vcat(input.features..., 1)
 
-        candidates = _activate(layer.weightsC, layer.activations[i, :], tanh)
+        candidateNets = layer.weightsC * layer.activations[i, :]
+        candidates = tanH(candidateNets)
         inputGates = _activate(layer.weightsI, layer.activations[i, :], sigmoid)
         forgetGates = _activate(layer.weightsF, layer.activations[i, :], sigmoid)
         outputs = _activate(layer.weightsO, layer.activations[i, :], sigmoid)
         
         nextStates = inputGates .* candidates .+ forgetGates .* layer.states[i, :]
-        nextActivations = outputs .* tanh.(nextStates)
+        nextActivations = outputs .* tanH(nextStates)
 
         i += 1
         # Pad activations with zeros for now to preserve dimensions of layer.activations.
         # On the next loop iteration, they will be replaced by the inputs and bias.
         layer.activations[i, :] = vcat(nextActivations, zeros(numFeatures+1))
+        # Used on the next iteration of forward propagation
         layer.states[i, : ] = nextStates
+        # All the following are used during backpropagation
+        layer.activationsC[i, :] = candidates
+        layer.activationsI[i, :] = inputGates
+        layer.activationsF[i, :] = forgetGates
+        layer.activationsO[i, :] = outputs
+        layer.netsC[i, :] = candidateNets
     end
 end
 
 # The outputs of forward and backward recurrent layers are the inputs to the last layer
 # We don't pass the inputs and bias to the last layer.
-function _propForwardConnected(layer::ConnectedLayer, forwardInputs::RecurrentLayer, backwardInputs::RecurrentLayer)
+function _propForwardConnected(layer::ConnectedLayer, forwardInputs::AnyRecurrentLayer, backwardInputs::AnyRecurrentLayer)
     forwardActivations = forwardInputs.activations[end, 1:forwardInputs.outputSize]
     backwardActivations = backwardInputs.activations[end, 1:backwardInputs.outputSize]
     layer.activations = _activate(layer.weights, vcat(forwardActivations, backwardActivations, 1), layer.params.activation)
@@ -298,24 +321,68 @@ function _bpttRecurrent(layer::RecurrentLayer, errors_k::Array{Float64,1})
 end
 
 function _bpttRecurrentLstm(layer::RecurrentLayerLstm, errors_k::Array{Float64,1})
-    # TODO: Implement this method for RecurrentLayerLstm
-    δweights = Array{Array{Float64,2},1}(undef, 0)
+    δweightsC = Array{Array{Float64,2},1}(undef, 0)
+    δweightsI = Array{Array{Float64,2},1}(undef, 0)
+    δweightsF = Array{Array{Float64,2},1}(undef, 0)
+    δweightsO = Array{Array{Float64,2},1}(undef, 0)
+    δstates = zeros(Float64, size(layer.states)[2])
+
     layerError = errors_k
     for i in size(layer.activations, 1) - 1:-1:2
-        # The persisted activation vector already contains the
-        # appropriate input vector and bias value so just pass it as is.
-        layerError, δweights_ij = _backprop(layer.weights, layerError, layer.activations[i, :], layer.activations[i - 1, :], layer.params, layer.stats, layer.outputSize)
-        push!(δweights, δweights_ij) 
-    end
-    # Momentum takes into account the last weight change and the current weight change
-    totalδweights = layer.params.addMomentum(sum(δweights) ./ length(δweights), layer.deltaWeightsPrev)
-    push!(layer.stats.averageWeightChange, sum(totalδweights) / length(totalδweights));
+        # Backpropagate the error for this iteration
 
-    layer.deltaWeightsPrev = totalδweights
-    layer.weights .+= totalδweights;
+        # These are the errors of the post-activated values in the LSTM
+        δoutputs = layerError .* tanH(layer.states[i, :])
+        δstates += layerError .* layer.activationsO[i, :] .* tanHPrime(layer.states[i, :])
+        δinputGates = δstates .* layer.activationsC[i, :]
+        δforgetGates = δstates .* layer.states[i - 1, :]
+        δcandidates = δstates .* layer.activationsI[i, :]
+
+        # Now find the errors of the pre-activated values in the LSTM i.e.
+        # backprop through the activation functions.
+        # δcandidates = δcandidates .* tanHPrime(layer.netsC[i, :])
+        # δinputGates = δinputGates .* sigmoidPrime(layer.activationsI[i, :])
+        # δforgetGates = δforgetGates .* sigmoidPrime(layer.activationsF[i, :])
+        # δoutputs = δoutputs .* sigmoidPrime(layer.activationsO[i, :])
+
+        tanhParams = LearningParams(layer.params.learningRate, tanH, tanHPrime, keepStats=layer.params.keepStats)
+
+        # Backpropagate through the activation function and calculate the weight updates and pre-weight errors.
+        δcandidates, δweightsC_ij = _backprop(layer.weightsC, δcandidates, layer.netsC[i, :], layer.activations[i - 1, :], tanhParams, layer.stats, layer.outputSize)
+        δinputGates, δweightsI_ij = _backprop(layer.weightsI, δinputGates, layer.activationsI[i, :], layer.activations[i - 1, :], layer.params, layer.stats, layer.outputSize)
+        δforgetGates, δweightsF_ij = _backprop(layer.weightsF, δforgetGates, layer.activationsF[i, :], layer.activations[i - 1, :], layer.params, layer.stats, layer.outputSize)
+        δoutputs, δweightsO_ij = _backprop(layer.weightsO, δoutputs, layer.activationsO[i, :], layer.activations[i - 1, :], layer.params, layer.stats, layer.outputSize)
+        
+        push!(δweightsC, δweightsC_ij)
+        push!(δweightsI, δweightsI_ij)
+        push!(δweightsF, δweightsF_ij)
+        push!(δweightsO, δweightsO_ij)
+
+        layerError = δcandidates + δinputGates + δforgetGates + δoutputs
+    end
+
+    # Momentum takes into account the last weight change and the current weight change
+    totalδweightsC = layer.params.addMomentum(sum(δweightsC) ./ length(δweightsC), layer.deltaWeightsPrevC)
+    totalδweightsI = layer.params.addMomentum(sum(δweightsI) ./ length(δweightsI), layer.deltaWeightsPrevI)
+    totalδweightsF = layer.params.addMomentum(sum(δweightsF) ./ length(δweightsF), layer.deltaWeightsPrevF)
+    totalδweightsO = layer.params.addMomentum(sum(δweightsO) ./ length(δweightsO), layer.deltaWeightsPrevO)
+
+    if layer.params.keepStats
+        push!(layer.stats.averageWeightChange, sum(totalδweightsC + totalδweightsI + totalδweightsF + totalδweightsO) / length(totalδweightsC))
+    end
+
+    layer.deltaWeightsPrevC = totalδweightsC
+    layer.deltaWeightsPrevI = totalδweightsI
+    layer.deltaWeightsPrevF = totalδweightsF
+    layer.deltaWeightsPrevO = totalδweightsO
+
+    layer.weightsC .+= totalδweightsC
+    layer.weightsI .+= totalδweightsI
+    layer.weightsF .+= totalδweightsF
+    layer.weightsO .+= totalδweightsO
 end
 
-function _bptt(layer::ConnectedLayer, forwardInputs::RecurrentLayer, backwardInputs::RecurrentLayer, target::DataItem)
+function _bptt(layer::ConnectedLayer, forwardInputs::AnyRecurrentLayer, backwardInputs::AnyRecurrentLayer, target::DataItem)
     # We don't pass the bias and inputs from the recurrent layer to the last layer.
     activations = vcat(forwardInputs.activations[end, 1:forwardInputs.outputSize]..., backwardInputs.activations[end, 1:backwardInputs.outputSize]..., 1)
     outputError, δweights = _backpropLastLayer(target.labels, layer.activations, activations, layer.params, layer.stats)
