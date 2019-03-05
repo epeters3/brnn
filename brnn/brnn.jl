@@ -104,11 +104,12 @@ end
 
 # Initalize a brnn with i inputs, n hidden nodes, and o output nodes
 function BrnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::LearningParams, forwardτ::Int64, backwardτ::Int64, outputLearningParams::LearningParams, networkLearningParams::LearningParams)
-    forwardRecurrentLayer = RecurrentLayer(i, n, hiddenLearningParams, forwardτ, true)
-    backwardRecurrentLayer = RecurrentLayer(i, n, hiddenLearningParams, backwardτ, false)
+    fullτ = forwardτ + backwardτ
+    forwardRecurrentLayer = RecurrentLayer(i, n, hiddenLearningParams, fullτ, true)
+    backwardRecurrentLayer = RecurrentLayer(i, n, hiddenLearningParams, fullτ, false)
     outputLayer = ConnectedLayer(n * 2, o, outputLearningParams)
     stats = LearningStatistics()
-    return BrnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, forwardτ+backwardτ, stats)
+    return BrnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, fullτ, stats)
 end
 
 ########################
@@ -152,8 +153,8 @@ end
 
 # Forward Propagation From Inputs to Outputs
 function propagateForward(network::BrnnNetwork, inputs::Array{DataItem})
-    _propForwardRecurrent(network.recurrentForwardsLayer, inputs[1:network.recurrentForwardsLayer.τ])
-    _propForwardRecurrent(network.recurrentBackwardsLayer, inputs[network.recurrentForwardsLayer.τ+1:end])
+    _propForwardRecurrent(network.recurrentForwardsLayer, inputs)
+    _propForwardRecurrent(network.recurrentBackwardsLayer, inputs)
     _propForwardConnected(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
 end
 
