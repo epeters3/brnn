@@ -245,8 +245,8 @@ end
 
 # Forward Propagation From Inputs to Outputs
 function propagateForward(network::BrnnNetwork, inputs::Array{DataItem})
-    _propForwardRecurrent(network.recurrentForwardsLayer, inputs)
-    _propForwardRecurrent(network.recurrentBackwardsLayer, inputs)
+    _propForwardAnyRecurrent(network.recurrentForwardsLayer, inputs)
+    _propForwardAnyRecurrent(network.recurrentBackwardsLayer, inputs)
     _propForwardConnected(network.outputLayer, network.recurrentForwardsLayer, network.recurrentBackwardsLayer)
 end
 
