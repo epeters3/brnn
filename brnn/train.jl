@@ -13,7 +13,7 @@ Train the network from a dataset
 `min_delta`:    Minimum change in the validation accuracy to qualify as an improvement,
                 i.e. an absolute change of less than min_delta, will count as no improvement.
 =#
-function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patience::Int, minDelta::Float64, maxEpochs::Int, targetOffset::Int)
+function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patience::Int, minDelta::Float64, minEpochs::Int, maxEpochs::Int, targetOffset::Int)
     window = Array{DataItem}(undef, 0)
     timesThrough = 0
     trainError = 0
@@ -21,7 +21,7 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patienc
     valError = 0
     epoch = 1
     numNoImprovement = 0
-    while numNoImprovement < patience && epoch <= maxEpochs
+    while epoch <= minEpochs || (numNoImprovement < patience && epoch <= maxEpochs)
         # Train the model
         trainError = 0
         for item in data.examples

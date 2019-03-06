@@ -32,7 +32,7 @@ function runDparity()
     validation = generateDparityData(Int64(testSetSize / 10), dparityWindow)
     params::LearningParams = LearningParams(.3);
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, length(dparityWindow), params, params, false)
-    learn(brnn, dataSet, validation, 20, .0001, 1000, 2)
+    learn(brnn, dataSet, validation, 10, .01, 50, 1000, 2)
     mkpath("dparity")
     displayGraphs(brnn, "dparity/")
 end
@@ -43,7 +43,7 @@ function runWeightedSumClassification()
     validation = generateWeightedSumData(1000, 10, 20, true)
     params::LearningParams = LearningParams(.03);
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 30, params, params, false)
-    learn(brnn, dataSet, validation, 25, .0001, 1000, 11)
+    learn(brnn, dataSet, validation, 25, .0001, 30, 1000, 11)
     
     mkpath("weightedSumClassification")
     displayGraphs(brnn, "weightedSumClassification/")
@@ -54,7 +54,7 @@ function runWeightedSumRegression()
     validation = generateWeightedSumData(1000, 10, 20, false)
     params::LearningParams = LearningParams(.03);
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 30, params, params, false)
-    learn(brnn, dataSet, validation, 25, .0001, 1000, 11)
+    learn(brnn, dataSet, validation, 25, .0001, 30, 1000, 11)
     
     mkpath("weightedSumRegression")
     displayGraphs(brnn, "weightedSumRegression/")
@@ -67,7 +67,7 @@ function runGesturesClassification()
     params::LearningParams = LearningParams(.01, keepStats = false);
     brnn::BrnnNetwork = BrnnNetwork(8, 20, 8, params, 20, params, params, false)
 
-    learn(brnn, dataSet, validationSet, 25, .0001, 100, 11)
+    learn(brnn, dataSet, validationSet, 25, .0001, 30, 100, 11)
 
     mkpath("gesturesClassification")
     displayGraphs(brnn, "gesturesClassification/")
