@@ -19,6 +19,8 @@ function softmax(nets::Array{Float64})
     return exps ./ sum(exps)
 end
 
+softmaxPrime(outputs::Array{Float64}) = ones(size(outputs))
+
 ReLU(nets::Array{Float64}) = max.(0, nets)
 
 ReLUPrime(output::Float64) = output < 0 ? 0 : 1

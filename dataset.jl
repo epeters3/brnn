@@ -100,11 +100,16 @@ function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindow
     for i in 1:numItems;
         leftSum::Float64 = (1 / leftWindowSize) * weightedSum(randFloats, i, -leftWindowSize:-1)
         rightSum::Float64 = (1 / rightWindowSize) * weightedSum(randFloats, i, 0:rightWindowSize - 1)
-        label::Float64 = leftSum + rightSum
+        sumForLabel::Float64 = leftSum + rightSum
         if isClassification
-            label = label <= 0.5 ? 0.0 : 1.0
+            # One hot encode the label
+            iForLabel = sumForLabel <= 0.5 ? 1 : 2
+            label = zeros(2)
+            label[iForLabel] = 1
+        else
+            label = [sumForLabel]
         end
-        data.examples[i] = DataItem([randFloats[i]], [label])
+        data.examples[i] = DataItem([randFloats[i]], label)
     end
 
     return data
