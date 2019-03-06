@@ -5,7 +5,7 @@ using Plots
 
 
 function displayLayerStatistics(stats::LayerStatistics, name::String)
-    sampledAvgWeightChange = downSample(stats.averageWeightChange, 1000)
+    sampledAvgWeightChange = downSample(stats.averageWeightChange, 100)
     plt = plot(1:length(sampledAvgWeightChange), sampledAvgWeightChange)
     savefig(plt, name);
 end

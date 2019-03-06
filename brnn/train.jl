@@ -30,7 +30,7 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, patienc
                 propagateForward(network, window);
                 target = window[targetOffset]
                 trainError += SSE(target.labels, network.outputLayer.activations)
-                # println("train: $(target.labels) - $(network.outputLayer.activations)")
+                # println("train: $(target.features) -> ($(target.labels) == $(network.outputLayer.activations))?")
                 bptt(network, target);
                 popfirst!(window) # Pops from the first
                 timesThrough += 1

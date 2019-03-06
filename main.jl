@@ -26,11 +26,13 @@ end
 
 # Here is the main body of the module
 function runDparity()
-    dataSet = generateDparityData(100, [1, 0, -1])
-    validation = generateDparityData(10, [1, 0, -1])
-    params::LearningParams = LearningParams(.1);
-    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 2, 2, params, params, false)
-    learn(brnn, dataSet, validation, 20, .0001, 1000, 3)
+    dparityWindow = [1, 0, -1]
+    testSetSize = 10000
+    dataSet = generateDparityData(testSetSize, dparityWindow)
+    validation = generateDparityData(Int64(testSetSize / 10), dparityWindow)
+    params::LearningParams = LearningParams(.3);
+    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, length(dparityWindow), params, params, false)
+    learn(brnn, dataSet, validation, 20, .0001, 1000, 2)
     mkpath("dparity")
     displayGraphs(brnn, "dparity/")
 end
@@ -40,7 +42,7 @@ function runWeightedSumClassification()
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
     params::LearningParams = LearningParams(.03);
-    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 10, 20, params, params, false)
+    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 30, params, params, false)
     learn(brnn, dataSet, validation, 25, .0001, 1000, 11)
     
     mkpath("weightedSumClassification")
@@ -51,7 +53,7 @@ function runWeightedSumRegression()
     dataSet = generateWeightedSumData(10000, 10, 20, false)
     validation = generateWeightedSumData(1000, 10, 20, false)
     params::LearningParams = LearningParams(.03);
-    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 10, 20, params, params, false)
+    brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, params, 30, params, params, false)
     learn(brnn, dataSet, validation, 25, .0001, 1000, 11)
     
     mkpath("weightedSumRegression")
@@ -63,7 +65,7 @@ function runGesturesClassification()
     println(length(dataSet.examples))
     validationSet = getGesturesDataSet(31:31)
     params::LearningParams = LearningParams(.01, keepStats = false);
-    brnn::BrnnNetwork = BrnnNetwork(8, 20, 8, params, 10, 10, params, params, false)
+    brnn::BrnnNetwork = BrnnNetwork(8, 20, 8, params, 20, params, params, false)
 
     learn(brnn, dataSet, validationSet, 25, .0001, 100, 11)
 
