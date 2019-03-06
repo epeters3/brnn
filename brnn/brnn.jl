@@ -137,14 +137,13 @@ mutable struct BrnnNetwork
     inputSize::Int
     hiddenSize::Int
     outputSize::Int
-    params::LearningParams
     τ::Int64
     stats::LearningStatistics
     isLstm::Bool
 end
 
 # Initalize a brnn with i inputs, n hidden nodes, and o output nodes
-function BrnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::LearningParams, τ::Int64, outputLearningParams::LearningParams, networkLearningParams::LearningParams, isLstm::Bool)
+function BrnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::LearningParams, τ::Int64, outputLearningParams::LearningParams, isLstm::Bool)
     if isLstm
         forwardRecurrentLayer = RecurrentLayerLstm(i, n, hiddenLearningParams, τ, true)
         backwardRecurrentLayer = RecurrentLayerLstm(i, n, hiddenLearningParams, τ, false)
@@ -154,7 +153,7 @@ function BrnnNetwork(i::Int, n::Int, o::Int, hiddenLearningParams::LearningParam
     end
     outputLayer = ConnectedLayer(n * 2, o, outputLearningParams)
     stats = LearningStatistics()
-    return BrnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, networkLearningParams, τ, stats, isLstm)
+    return BrnnNetwork(forwardRecurrentLayer, backwardRecurrentLayer, outputLayer, i, n, o, τ, stats, isLstm)
 end
 
 ########################
