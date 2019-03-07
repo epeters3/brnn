@@ -43,12 +43,12 @@ end
 
 function runWeightedSumClassification()
     lr = .03
-    dataSet = generateWeightedSumData(10000, 10, 20, true)
-    validation = generateWeightedSumData(1000, 10, 20, true)
+    dataSet = generateWeightedSumData(10000, 5, 8, true)
+    validation = generateWeightedSumData(1000, 5, 8, true)
     rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats=false)
     oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats=false)
-    brnn::BrnnNetwork = BrnnNetwork(1, 20, 2, rParams, 30, oParams, false)
-    learn(brnn, dataSet, validation, true, 10, .0001, 80, 1000, 11)
+    brnn::BrnnNetwork = BrnnNetwork(1, 20, 2, rParams, 13, oParams, false)
+    learn(brnn, dataSet, validation, true, 10, .0001, 80, 1000, 6)
     
     mkpath("weightedSumClassification")
     displayGraphs(brnn, "weightedSumClassification/", true)
