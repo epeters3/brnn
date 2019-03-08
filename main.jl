@@ -75,13 +75,13 @@ function runWeightedSumClassification()
     function weightedSumClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
-        return BrnnNetwork(1, 30, 2, rParams, 11, oParams, false)
+        return BrnnNetwork(1, 30, 2, rParams, 30, oParams, false)
     end
     lr = .03
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
     lrSweep = [.01, .03, .05, .09, .13, .17]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 6, "weightedSumClassification"; minDelta = .0001, minEpochs = 80)
+    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 11, "weightedSumClassification"; minDelta = .0001, minEpochs = 80)
 end
 
 function runWeightedSumRegression()
