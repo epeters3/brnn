@@ -43,7 +43,7 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
         end
         push!(avgLearningStats.trainErrors, avgTrainError)
         push!(avgLearningStats.valErrors, avgValidationError)
-        displayGraphs(network, "$name/lr$(lr)", classification, false)
+        displayGraphs(network, "$name/lr$(lr)", classification; layerGraphs = false)
     end
    
     displaySweepGraph(network.stats, "$name/brnn-learning-stats-sweep", classification, lrates)
