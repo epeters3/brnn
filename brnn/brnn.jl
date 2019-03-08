@@ -31,13 +31,16 @@ end
 
 
 # Stores data about each epoch
-struct LearningStatistics
+mutable struct LearningStatistics
     valErrors::Array{Float64,1}
+    bestValError::Float64
     trainErrors::Array{Float64,1}
+    valAccuracies::Array{Float64,1}
+    bestValAccuracy::Float64
 end
 
 function LearningStatistics()
-    return LearningStatistics([], [])
+    return LearningStatistics([], Inf64, [], [], -Inf64)
 end
 
 

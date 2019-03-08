@@ -65,12 +65,12 @@ function runDparity()
     lr = .3
     dataSet = generateDparityData(testSetSize, dparityWindow)
     validation = generateDparityData(Int64(testSetSize / 10), dparityWindow)
-    rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime)
-    oParams::LearningParams = LearningParams(lr, linear, linearPrime)
+    rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
+    oParams::LearningParams = LearningParams(lr, linear, linearPrime, keepStats = false)
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, rParams, length(dparityWindow), oParams, false)
     learn(brnn, dataSet, validation, false, 10, .01, 50, 1000, 2)
     mkpath("dparity")
-    displayGraphs(brnn, "dparity/", false)
+    displayGraphs(brnn, "dparity/", false, layerGraphs=false)
 end
 
 
@@ -116,8 +116,8 @@ function runGesturesClassification()
 end
 function run()
     #runGesturesClassification()
-    #runDparity()
-    runWeightedSumClassification();
+    runDparity()
+    #runWeightedSumClassification();
     #runWeightedSumRegression();
 end
 

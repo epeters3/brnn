@@ -20,7 +20,6 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, isClass
     valError = 0
     epoch = 1
     numNoImprovement = 0
-    minError = Inf64
     while epoch <= minEpochs || (numNoImprovement < patience && epoch <= maxEpochs)
         # Train the model
         trainError = 0
@@ -43,6 +42,7 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, isClass
         
         # Validate the model
         window = Array{DataItem}(undef, 0)
+        valNumCorrect = 0
         for item in validation.examples
             push!(window, item) # Appends to the end
             if length(window) == network.τ
@@ -50,6 +50,10 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, isClass
                 target = window[targetOffset]
                 if isClassification
                     valError += crossEntropy(target.labels, network.outputLayer.activations)
+                    if findmax(target.labels)[2] == findmax(network.outputLayer.activations)[2]
+                        # The model predicted the correct class
+                        valNumCorrect += 1
+                    end
                 else
                     valError += SSE(target.labels, network.outputLayer.activations)
                 end
@@ -58,21 +62,32 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, isClass
             end
         end
 
-        # Report
-        valErrorDelta = minError - valError
-        if valError < minError
-            minError = valError
+        # Track best val error and best val accuracy
+        valErrorDelta = network.stats.bestValError - valError
+        if valError < network.stats.bestValError
+            network.stats.bestValError = valError
+        end
+        valAccuracy = valNumCorrect / length(validation.examples)
+        if valAccuracy > network.stats.bestValAccuracy
+            network.stats.bestValAccuracy = valAccuracy
         end
         if (valErrorDelta < minDelta)
             numNoImprovement += 1
         else
             numNoImprovement = 0
         end
-        println("Epoch $(epoch): Validation error: $(valError) Train error: $(trainError) numNoImprovement: $(numNoImprovement) ")
         
-        # Housekeeping
+        # Report
+        println("Epoch $(epoch): Val error: $(valError) Train error: $(trainError) $(isClassification ? "Val accuracy: $(valAccuracy) " : "")numNoImprovement: $(numNoImprovement) ")
+        
+        # Record more stats
         push!(network.stats.trainErrors, trainError / length(data.examples)) # Mean Squared Error
         push!(network.stats.valErrors, valError / length(validation.examples)) # Mean Squared Error
+        if isClassification
+            push!(network.stats.valAccuracies, valAccuracy)
+        end
+        
+        # Housekeeping
         epoch += 1
         trainError = 0
         valError = 0
