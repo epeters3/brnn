@@ -63,26 +63,35 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, isClass
         end
 
         # Track best val error and best val accuracy
+
+        trainError /= length(data.examples) # Scale by the size of the datawset
+        valError /= length(validation.examples) # Scale by the size of the datawset
+        valAccuracy = valNumCorrect / length(validation.examples)
+
         valErrorDelta = network.stats.bestValError - valError
         if valError < network.stats.bestValError
             network.stats.bestValError = valError
         end
-        valAccuracy = valNumCorrect / length(validation.examples)
         if valAccuracy > network.stats.bestValAccuracy
             network.stats.bestValAccuracy = valAccuracy
         end
-        if (valErrorDelta < minDelta)
+        if valErrorDelta < minDelta
             numNoImprovement += 1
         else
             numNoImprovement = 0
         end
         
         # Report
-        println("Epoch $(epoch): Val error: $(valError) Train error: $(trainError) $(isClassification ? "Val accuracy: $(valAccuracy) " : "")numNoImprovement: $(numNoImprovement) ")
-        
+        if isClassification
+            # MCE is Mean Cross Entropy
+            println("Epoch $(epoch): Val MCE: $(valError) Train MCE: $(trainError) Val accuracy: $(valAccuracy) numNoImprovement: $(numNoImprovement)")
+        else
+            println("Epoch $(epoch): Val MSE: $(valError) Train MSE: $(trainError) numNoImprovement: $(numNoImprovement)")
+        end
+
         # Record more stats
-        push!(network.stats.trainErrors, trainError / length(data.examples)) # Mean Squared Error
-        push!(network.stats.valErrors, valError / length(validation.examples)) # Mean Squared Error
+        push!(network.stats.trainErrors, trainError)
+        push!(network.stats.valErrors, valError)
         if isClassification
             push!(network.stats.valAccuracies, valAccuracy)
         end
