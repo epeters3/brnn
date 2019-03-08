@@ -30,22 +30,22 @@ end
 function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSet, validation::DataSet, targetOffset::Int, name::String; test::DataSet = DataSet(0), classification::Bool = true, patience::Int = 10, minDelta::Float64 = .001, minEpochs::Int = 50, maxEpochs::Int = 1000)
     mkpath(name)
     avgLearningStats::LearningStatistics = LearningStatistics()
-    bestValidationErrorSoFar = 0
-    bestModelSoFar::BrnnNetwork
+    bestValidationErrorSoFar::Float64 = 100000000
+    bestModelSoFar::BrnnNetwork = networkFcn(1.0)
     for lr in lrates
         network::BrnnNetwork = networkFcn(lr)
         learn(network, data, validation, classification, patience, minDelta, minEpochs, maxEpochs, targetOffset)
         avgTrainError = sum(network.stats.trainErrors) / length(network.stats.valErrors)
         avgValidationError =  sum(network.stats.valErrors) / length(network.stats.valErrors)
-        if (avgValidationError > bestValidationErrorSoFar)
+        if (avgValidationError < bestValidationErrorSoFar)
             bestModelSoFar = network
             bestValidationErrorSoFar = avgValidationError
         end
         push!(avgLearningStats.trainErrors, avgTrainError)
         push!(avgLearningStats.valErrors, avgValidationError)
-
+        displayGraphs(network, "$name/lr$(lr)", classification, false)
     end
-    displayGraphs(network.stats, "$name/", classification, true)
+   
     displaySweepGraph(network.stats, "$name/brnn-learning-stats-sweep", classification, lrates)
 end
 
@@ -66,7 +66,7 @@ end
 
 
 function runWeightedSumClassification()
-    weightedSumClassificationFcn = function(lr::Float64)
+    function weightedSumClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
         return BrnnNetwork(1, 30, 2, rParams, 11, oParams, false)
