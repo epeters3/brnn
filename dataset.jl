@@ -91,7 +91,7 @@ weighted sum of the inputs within a window of `leftWindowSize` frames to the lef
 """
 function generateWeightedSumData(numItems::Int, leftWindowSize::Int, rightWindowSize::Int, isClassification::Bool)
 
-    data::DataSet = DataSet( numItems)
+    data::DataSet = DataSet(numItems)
     randFloats = rand(Float64, numItems)
     # Make sure these args are positive
     leftWindowSize = abs(leftWindowSize)

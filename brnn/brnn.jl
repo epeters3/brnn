@@ -2,7 +2,7 @@ module brnn
 using dataset: DataItem
 using plugins: sigmoid, sigmoidPrime, tanH, tanHPrime, randGaussian, RPropMomentum
 
-struct LearningParams
+mutable struct LearningParams
     activation::Function
     fPrimeNet::Function
     addMomentum::Function
