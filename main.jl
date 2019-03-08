@@ -33,7 +33,7 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
     bestModelSoFar::BrnnNetwork = networkFcn(1.0)
     network::BrnnNetwork = bestModelSoFar
     allTrainingStats::LearningStatistics = LearningStatistics()
-    bestLr = 0
+    bestLr::Float64 = 0.0
     for lr in lrates
         avgLearningStats::LearningStatistics = LearningStatistics()
         for n in 1:numTries
@@ -82,7 +82,6 @@ function runWeightedSumClassification()
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
         return BrnnNetwork(1, 30, 2, rParams, 30, oParams, false)
     end
-    lr = .03
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
     lrSweep = [.003, .002, .0015, .001, .0005]
