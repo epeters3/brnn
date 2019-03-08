@@ -27,32 +27,35 @@ function displayGraphs(network::BrnnNetwork, namePrefix::String, isClassificatio
 end
 
 
-function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSet, validation::DataSet, targetOffset::Int, name::String; test::DataSet = DataSet(0), classification::Bool = true, patience::Int = 10, minDelta::Float64 = .001, minEpochs::Int = 50, maxEpochs::Int = 1000, numTries::Int = 3)
+function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSet, validation::DataSet, targetOffset::Int, name::String; test::DataSet = DataSet(0), classification::Bool = true, patience::Int = 10, minDelta::Float64 = .001, minEpochs::Int = 50, maxEpochs::Int = 1000, numTries::Int = 1)
     mkpath(name)
-    
     bestValidationErrorSoFar::Float64 = 100000000
     bestModelSoFar::BrnnNetwork = networkFcn(1.0)
+    network::BrnnNetwork = bestModelSoFar
+    allTrainingStats::LearningStatistics = LearningStatistics()
     for lr in lrates
         avgLearningStats::LearningStatistics = LearningStatistics()
         for n in 1:numTries
-            network::BrnnNetwork = networkFcn(lr)
+            network = networkFcn(lr)
             learn(network, data, validation, classification, patience, minDelta, minEpochs, maxEpochs, targetOffset)
             push!(avgLearningStats.trainErrors, network.stats.trainErrors[end])
             push!(avgLearningStats.valErrors, network.stats.valErrors[end])
+            displayGraphs(network, "$name/lr$(lr)-trial$n-", classification; layerGraphs = false)
         end
         avgTrainError = sum(avgLearningStats.trainErrors) / length(avgLearningStats.trainErrors)
         avgValidationError = sum(avgLearningStats.valErrors) / length(avgLearningStats.valErrors)
+        
         if (avgValidationError < bestValidationErrorSoFar)
             bestModelSoFar = network
             bestValidationErrorSoFar = avgValidationError
         end
 
-        push!(avgLearningStats.trainErrors, avgTrainError)
-        push!(avgLearningStats.valErrors, avgValidationError)
-        displayGraphs(network, "$name/lr$(lr)", classification; layerGraphs = false)
+        push!(allTrainingStats.trainErrors, avgTrainError)
+        push!(allTrainingStats.valErrors, avgValidationError)
+       
     end
-   
-    displaySweepGraph(network.stats, "$name/brnn-learning-stats-sweep", classification, lrates)
+    displayGraphs(bestModelSoFar, "$name/best-model-lr$(lr)-", classification; layerGraphs = false)
+    displaySweepGraph(allTrainingStats, "$name/brnn-learning-stats-sweep", classification, lrates)
 end
 
 # Here is the main body of the module
@@ -80,8 +83,8 @@ function runWeightedSumClassification()
     lr = .03
     dataSet = generateWeightedSumData(10000, 10, 20, true)
     validation = generateWeightedSumData(1000, 10, 20, true)
-    lrSweep = [.01, .03, .05, .09, .13, .17]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 11, "weightedSumClassification"; minDelta = .0001, minEpochs = 80)
+    lrSweep = [.003, .002, .0015, .001, .0005]
+    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 11, "weightedSumClassification"; minDelta = .0001, minEpochs = 120, maxEpochs = 3000, numTries = 3)
 end
 
 function runWeightedSumRegression()
