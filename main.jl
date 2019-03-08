@@ -27,7 +27,8 @@ function displayGraphs(network::BrnnNetwork, namePrefix::String, isClassificatio
 end
 
 
-function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSet, validation::DataSet, targetOffset::Int, name::String; test::DataSet = DataSet(0), classification::Bool = true, patience::Int = 10, minDelta::Float64 = .001, minEpochs::Int = 50, maxEpochs::Int = 1000, numTries::Int = 1)
+function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSet, validation::DataSet, targetOffset::Int, name::String; test::DataSet = DataSet(0), isClassification::Bool = true, patience::Int = 10, minDelta::Float64 = .001, minEpochs::Int = 50, maxEpochs::Int = 1000, numTries::Int = 1)
+    println("beginning learning rate sweep for LR=$(lrates)")
     mkpath(name)
     bestValidationErrorSoFar::Float64 = 100000000
     bestModelSoFar::BrnnNetwork = networkFcn(1.0)
@@ -37,12 +38,13 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
     for lr in lrates
         avgLearningStats::LearningStatistics = LearningStatistics()
         for n in 1:numTries
+            println("Try $(n)/$(numTries) (LR=$(lr))")
             network = networkFcn(lr)
-            learn(network, data, validation, classification, patience, minDelta, minEpochs, maxEpochs, targetOffset)
+            learn(network, data, validation, isClassification, patience, minDelta, minEpochs, maxEpochs, targetOffset)
             push!(avgLearningStats.trainErrors, network.stats.trainErrors[end])
             push!(avgLearningStats.valErrors, network.stats.bestValError)
             push!(avgLearningStats.valAccuracies, network.stats.bestValAccuracy)
-            displayGraphs(network, "$name/lr$(lr)-trial$n-", classification; layerGraphs = false)
+            displayGraphs(network, "$name/lr$(lr)-trial$n-", isClassification; layerGraphs = false)
         end
         avgTrainError = sum(avgLearningStats.trainErrors) / length(avgLearningStats.trainErrors)
         avgValidationError = sum(avgLearningStats.valErrors) / length(avgLearningStats.valErrors)
@@ -58,8 +60,8 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
         push!(allTrainingStats.valAccuracies, avgValidationAccuracy)
        
     end
-    displayGraphs(bestModelSoFar, "$name/best-model-lr$(bestLr)-", classification; layerGraphs = false)
-    displaySweepGraph(allTrainingStats, "$name/brnn-learning-stats-sweep", classification, lrates)
+    displayGraphs(bestModelSoFar, "$name/best-model-lr$(bestLr)-", isClassification; layerGraphs = false)
+    displaySweepGraph(allTrainingStats, "$name/brnn-learning-stats-sweep", isClassification, lrates)
 end
 
 # Here is the main body of the module
