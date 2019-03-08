@@ -40,12 +40,13 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
             network = networkFcn(lr)
             learn(network, data, validation, classification, patience, minDelta, minEpochs, maxEpochs, targetOffset)
             push!(avgLearningStats.trainErrors, network.stats.trainErrors[end])
-            push!(avgLearningStats.valErrors, network.stats.valErrors[end])
+            push!(avgLearningStats.valErrors, network.stats.bestValError)
+            push!(avgLearningStats.valAccuracies, network.stats.bestValAccuracy)
             displayGraphs(network, "$name/lr$(lr)-trial$n-", classification; layerGraphs = false)
         end
         avgTrainError = sum(avgLearningStats.trainErrors) / length(avgLearningStats.trainErrors)
         avgValidationError = sum(avgLearningStats.valErrors) / length(avgLearningStats.valErrors)
-        
+        avgValidationAccuracy = sum(avgLearningStats.valAccuracies) / length(avgLearningStats.valAccuracies)
         if (avgValidationError < bestValidationErrorSoFar)
             bestModelSoFar = network
             bestLr = lr
@@ -54,6 +55,7 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
 
         push!(allTrainingStats.trainErrors, avgTrainError)
         push!(allTrainingStats.valErrors, avgValidationError)
+        push!(allTrainingStats.valAccuracies, avgValidationAccuracy)
        
     end
     displayGraphs(bestModelSoFar, "$name/best-model-lr$(bestLr)-", classification; layerGraphs = false)
@@ -80,12 +82,12 @@ function runWeightedSumClassification()
     function weightedSumClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
-        return BrnnNetwork(1, 30, 2, rParams, 30, oParams, false)
+        return BrnnNetwork(1, 15, 2, rParams, 15, oParams, false)
     end
-    dataSet = generateWeightedSumData(10000, 10, 20, true)
-    validation = generateWeightedSumData(1000, 10, 20, true)
-    lrSweep = [.003, .002, .0015, .001, .0005]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 11, "weightedSumClassification"; minDelta = .0001, minEpochs = 120, maxEpochs = 3000, numTries = 3)
+    dataSet = generateWeightedSumData(10000, 5, 10, true)
+    validation = generateWeightedSumData(1000, 5, 10, true)
+    lrSweep = [.03, .02, .015, .01, .005]
+    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 6, "weightedSumClassification"; minDelta = .0001, minEpochs = 80, maxEpochs = 1000, numTries = 3)
 end
 
 function runWeightedSumRegression()
@@ -117,8 +119,8 @@ function runGesturesClassification()
 end
 function run()
     #runGesturesClassification()
-    runDparity()
-    #runWeightedSumClassification();
+    #runDparity()
+    runWeightedSumClassification();
     #runWeightedSumRegression();
 end
 

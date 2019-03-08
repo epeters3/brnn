@@ -11,12 +11,12 @@ function displayLayerStatistics(stats::LayerStatistics, name::String)
 end
 
 function displayLearningStatistics(stats::LearningStatistics, name::String, isClassification::Bool)
-    plt = plot(1:length(stats.trainErrors), hcat(stats.trainErrors, stats.valErrors), label = ["Train Error", "Val. Error"], xlabel = "Epochs", ylabel = isClassification ? "Loss" : "MSE")
+    plt = plot(1:length(stats.trainErrors), hcat(stats.trainErrors, stats.valErrors, stats.valAccuracies), label = ["Train Error", "Val. Error", "Val. Accuracy"], xlabel = "Epochs", ylabel = isClassification ? "Loss" : "MSE")
     savefig(plt, name);
 end
 
 function displaySweepGraph(stats::LearningStatistics, name::String, isClassification::Bool, lrSweep::Array{Float64})
-    plt = plot(lrSweep, hcat(stats.trainErrors, stats.valErrors), label = ["Train Error", "Val. Error"], xlabel = "Learning Rate", ylabel = isClassification ? "Loss" : "MSE")
+    plt = plot(lrSweep, hcat(stats.trainErrors, stats.valErrors, stats.valAccuracies), label = ["Train Error", "Val. Error", "Val. Accuracy"], xlabel = "Learning Rate", ylabel = isClassification ? "Loss" : "MSE")
     savefig(plt, name);
 end
 
