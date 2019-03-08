@@ -16,7 +16,11 @@ function displayLearningStatistics(stats::LearningStatistics, name::String, isCl
 end
 
 function displaySweepGraph(stats::LearningStatistics, name::String, isClassification::Bool, lrSweep::Array{Float64})
-    plt = plot(lrSweep, hcat(stats.trainErrors, stats.valErrors, stats.valAccuracies), label = ["Train Error", "Val. Error", "Val. Accuracy"], xlabel = "Learning Rate", ylabel = isClassification ? "Loss" : "MSE")
+    if isClassification
+        plt = plot(lrSweep, hcat(stats.trainErrors, stats.valErrors, stats.valAccuracies), label = ["Train Error", "Val. Error", "Val. Accuracy"], xlabel = "Learning Rate", ylabel = "Loss")
+    else
+        plt = plot(lrSweep, hcat(stats.trainErrors, stats.valErrors), label = ["Train Error", "Val. Error"], xlabel = "Learning Rate", ylabel = "MSE")
+    end
     savefig(plt, name);
 end
 
