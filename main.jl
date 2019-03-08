@@ -33,6 +33,7 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
     bestModelSoFar::BrnnNetwork = networkFcn(1.0)
     network::BrnnNetwork = bestModelSoFar
     allTrainingStats::LearningStatistics = LearningStatistics()
+    bestLr = 0
     for lr in lrates
         avgLearningStats::LearningStatistics = LearningStatistics()
         for n in 1:numTries
@@ -47,6 +48,7 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
         
         if (avgValidationError < bestValidationErrorSoFar)
             bestModelSoFar = network
+            bestLr = lr
             bestValidationErrorSoFar = avgValidationError
         end
 
@@ -54,7 +56,7 @@ function paramSweep(lrates::Array{Float64,1}, networkFcn::Function, data::DataSe
         push!(allTrainingStats.valErrors, avgValidationError)
        
     end
-    displayGraphs(bestModelSoFar, "$name/best-model-lr$(lr)-", classification; layerGraphs = false)
+    displayGraphs(bestModelSoFar, "$name/best-model-lr$(bestLr)-", classification; layerGraphs = false)
     displaySweepGraph(allTrainingStats, "$name/brnn-learning-stats-sweep", classification, lrates)
 end
 
@@ -70,7 +72,7 @@ function runDparity()
     brnn::BrnnNetwork = BrnnNetwork(1, 10, 1, rParams, length(dparityWindow), oParams, false)
     learn(brnn, dataSet, validation, false, 10, .01, 50, 1000, 2)
     mkpath("dparity")
-    displayGraphs(brnn, "dparity/", false, layerGraphs=false)
+    displayGraphs(brnn, "dparity/", false, layerGraphs = false)
 end
 
 
