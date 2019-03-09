@@ -20,6 +20,9 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, isClass
     valError = 0
     epoch = 1
     numNoImprovement = 0
+    # We never get to test on the first left window items or the last right window - 1 items.
+    trainLearnableSize = length(data.examples) - network.τ + 1
+    validationLearnableSize = length(validation.examples) - network.τ + 1
     while epoch <= minEpochs || (numNoImprovement < patience && epoch <= maxEpochs)
         # Train the model
         trainError = 0
@@ -64,9 +67,9 @@ function learn(network::BrnnNetwork, data::DataSet, validation::DataSet, isClass
 
         # Track best val error and best val accuracy
 
-        trainError /= length(data.examples) # Scale by the size of the datawset
-        valError /= length(validation.examples) # Scale by the size of the datawset
-        valAccuracy = valNumCorrect / length(validation.examples)
+        trainError /= trainLearnableSize # Scale by the size of the learnable dataset
+        valError /= validationLearnableSize # Scale by the size of the learnable dataset
+        valAccuracy = valNumCorrect / validationLearnableSize
 
         valErrorDelta = network.stats.bestValError - valError
         if valError < network.stats.bestValError
