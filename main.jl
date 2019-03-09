@@ -68,18 +68,18 @@ end
 ########## BRNN Experiments ##########
 ######################################
 
-# runDparity automatically uses length(dparityWindow) * 2 hidden units
-function runDparity(dparityWindow::Array{Int64}, targetOffset::Int, name::String, isLstm::Bool)
+# `h` is the number of hidden nodes.
+function runDparity(dparityWindow::Array{Int64}, targetOffset::Int, h::Int64, name::String, isLstm::Bool)
     trainDataSize = 10000
     function dParityFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
-        return BrnnNetwork(1, length(dparityWindow) * 2, 1, rParams, length(dparityWindow), oParams, isLstm)
+        return BrnnNetwork(1, h, 1, rParams, length(dparityWindow), oParams, isLstm)
     end
     dataSet = generateDparityData(trainDataSize, dparityWindow)
     validation = generateDparityData(Int64(trainDataSize / 10), dparityWindow)
-    lrSweep = [.001, .005, .01, .03,  .05, .1, .2]
-    paramSweep(lrSweep, dParityFcn, dataSet, validation, targetOffset, name; isClassification = false, minDelta = .0001, minEpochs = 100, maxEpochs = 100, numTries = 1)
+    lrSweep = [.001, .005, .01, .03,  .05, .1, .2, .3]
+    paramSweep(lrSweep, dParityFcn, dataSet, validation, targetOffset, name; isClassification = false, minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 1)
 end
 
 function runWeightedSumClassification(innerActivation::Function, innerActivationPrime::Function, name::String, isLstm::Bool)
@@ -92,8 +92,8 @@ function runWeightedSumClassification(innerActivation::Function, innerActivation
     end
     dataSet = generateWeightedSumData(trainDataSize, window[1], window[2], true)
     validation = generateWeightedSumData(Int64(trainDataSize / 10), window[1], window[2], true)
-    lrSweep = [.001, .005, .01, .03,  .05, .1, .2]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, window[1] + 1, name; minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 2)
+    lrSweep = [.001]
+    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, window[1] + 1, name; minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 1)
 end
 
 function runWeightedSumRegression(innerActivation::Function, innerActivationPrime::Function, name::String, isLstm::Bool)
@@ -128,13 +128,13 @@ end
 #############################
 
 function run()
-    #runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/", false)
-    runDparity([1,0,-1], 2, "Dparity3", false)
-    runDparity([2,1,0,-1,-2], 3, "Dparity5", false)
-    runDparity([4,3,2,1,0,-1,-2,-3,-4], 5, "Dparity9", false)    
-    #runWeightedSumClassification(sigmoid, sigmoidPrime, "weightedSumClassificationLightSigmoid/", false)
-    #runWeightedSumRegression(tanH, tanHPrime, "weightedSumRegressionSigmoid/", false)
-    ##runWeightedSumClassification(ReLU, ReLUPrime, "weightedSumClassificationReLU/", false)
+    #runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/", true)
+    runDparity([1,0,-1], 2, 10, "Dparity3", false)
+    #runDparity([2,1,0,-1,-2], 3, 12, "Dparity5", true)
+    #runDparity([4,3,2,1,0,-1,-2,-3,-4], 5, 15, "Dparity9", true)    
+    #runWeightedSumClassification(sigmoid, sigmoidPrime, "weightedSumClassificationLightSigmoid/", true)
+    #runWeightedSumRegression(tanH, tanHPrime, "weightedSumRegressionSigmoid/", true)
+    ##runWeightedSumClassification(ReLU, ReLUPrime, "weightedSumClassificationReLU/", true)
 end
 
 run()
