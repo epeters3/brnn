@@ -93,7 +93,7 @@ function runWeightedSumClassificationSmall()
     dataSet = generateWeightedSumData(10000, 5, 10, true)
     validation = generateWeightedSumData(1000, 5, 10, true)
     lrSweep = [.03, .02, .015, .01, .005]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 6, "weightedSumClassification"; minDelta = .0001, minEpochs = 80, maxEpochs = 1000, numTries = 3)
+    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 6, "weightedSumClassificationSmall"; minDelta = .0001, minEpochs = 80, maxEpochs = 1000, numTries = 3)
 end
 
 function runWeightedSumClassification()
@@ -104,8 +104,8 @@ function runWeightedSumClassification()
     end
     dataSet = generateWeightedSumData(100000, 10, 20, true)
     validation = generateWeightedSumData(10000, 10, 20, true)
-    lrSweep = [.03, .02, .015, .01, .005]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 11, "weightedSumClassification"; minDelta = .0001, minEpochs = 50, maxEpochs = 1000, numTries = 3)
+    lrSweep = [.02, .015, .01, .0075, .005]
+    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 11, "weightedSumClassification"; minDelta = .0001, minEpochs = 80, maxEpochs = 1000, numTries = 3)
 end
 
 function runWeightedSumRegression()
