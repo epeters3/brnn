@@ -118,10 +118,10 @@ function runGesturesClassification(innerActivation::Function, innerActivationPri
     function gesturesClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, innerActivation, innerActivationPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
-        brnn::BrnnNetwork = BrnnNetwork(8, 15, 8, rParams, 15, oParams, false)
+        brnn::BrnnNetwork = BrnnNetwork(8, 10, 8, rParams, 10, oParams, false)
     end
-    lrSweep = [.001, .005, .01, .03, .05, .1, .2]
-    paramSweep(lrSweep, gesturesClassificationFcn, dataSet, validationSet, 15, name; isClassification = false,minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 2)
+    lrSweep = [.005, .01, .05, .1, .2]
+    paramSweep(lrSweep, gesturesClassificationFcn, dataSet, validationSet, 10, name; isClassification = false,minDelta = .0001, minEpochs = 50, maxEpochs = 100, numTries = 1)
 end
 
 ######################################
@@ -194,10 +194,10 @@ end
 function run()
     # BRNN Experiments
     ##################
-    runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/")
+    #runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/")
     #runDparity()
     #runWeightedSumClassification(sigmoid, sigmoidPrime, "weightedSumClassificationSigmoid/")
-    #runWeightedSumRegression(tanH, tanHPrime, "weightedSumRegressionSigmoid/")
+    runWeightedSumRegression(tanH, tanHPrime, "weightedSumRegressionSigmoid/")
     ##runWeightedSumClassification(ReLU, ReLUPrime, "weightedSumClassificationReLU/")
 
 
