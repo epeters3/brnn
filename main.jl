@@ -80,7 +80,7 @@ function runDparity()
 end
 
 
-function runWeightedSumClassification()
+function runWeightedSumClassificationSmall()
     function weightedSumClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
@@ -90,6 +90,18 @@ function runWeightedSumClassification()
     validation = generateWeightedSumData(1000, 5, 10, true)
     lrSweep = [.03, .02, .015, .01, .005]
     paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 6, "weightedSumClassification"; minDelta = .0001, minEpochs = 80, maxEpochs = 1000, numTries = 3)
+end
+
+function runWeightedSumClassification()
+    function weightedSumClassificationFcn(lr::Float64)
+        rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
+        oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
+        return BrnnNetwork(1, 15, 2, rParams, 30, oParams, false)
+    end
+    dataSet = generateWeightedSumData(100000, 10, 20, true)
+    validation = generateWeightedSumData(10000, 10, 20, true)
+    lrSweep = [.03, .02, .015, .01, .005]
+    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 11, "weightedSumClassification"; minDelta = .0001, minEpochs = 50, maxEpochs = 1000, numTries = 3)
 end
 
 function runWeightedSumRegression()
