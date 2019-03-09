@@ -83,26 +83,13 @@ function runDparity()
     displayGraphs(brnn, "dparity/", false, layerGraphs = false)
 end
 
-
-function runWeightedSumClassificationSmall()
-    function weightedSumClassificationFcn(lr::Float64)
-        rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
-        oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
-        return BrnnNetwork(1, 15, 2, rParams, 15, oParams, false)
-    end
-    dataSet = generateWeightedSumData(10000, 5, 10, true)
-    validation = generateWeightedSumData(1000, 5, 10, true)
-    lrSweep = [.03, .02, .015, .01, .005]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, 6, "weightedSumClassificationSmall"; minDelta = .0001, minEpochs = 80, maxEpochs = 1000, numTries = 3)
-end
-
 function runWeightedSumClassification(innerActivation::Function, innerActivationPrime::Function, name::String)
-    window = [10,20]
+    window = [5,10]
     trainDataSize = 10000
     function weightedSumClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, innerActivation, innerActivationPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
-        return BrnnNetwork(1, 30, 2, rParams, sum(window), oParams, false)
+        return BrnnNetwork(1, 15, 2, rParams, sum(window), oParams, false)
     end
     dataSet = generateWeightedSumData(trainDataSize, window[1], window[2], true)
     validation = generateWeightedSumData(Int64(trainDataSize / 10), window[1], window[2], true)
@@ -111,12 +98,12 @@ function runWeightedSumClassification(innerActivation::Function, innerActivation
 end
 
 function runWeightedSumRegression(innerActivation::Function, innerActivationPrime::Function, name::String)
-    window = [10,20]
+    window = [5,10]
     trainDataSize = 10000
     function weightedSumRegressionFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, innerActivation, innerActivationPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, linear, linearPrime, keepStats = false)
-        return BrnnNetwork(1, 30, 2, rParams, sum(window), oParams, false)
+        return BrnnNetwork(1, 15, 1, rParams, sum(window), oParams, false)
     end
     dataSet = generateWeightedSumData(trainDataSize, window[1], window[2], false)
     validation = generateWeightedSumData(Int64(trainDataSize / 10), window[1], window[2], false)
@@ -125,19 +112,16 @@ function runWeightedSumRegression(innerActivation::Function, innerActivationPrim
 end
 
 
-function runGesturesClassification()
-    lr = .01
+function runGesturesClassification(innerActivation::Function, innerActivationPrime::Function, name::String)
     dataSet = getGesturesDataSet(1:5)
     validationSet = getGesturesDataSet(31:32)
-    rParams::LearningParams = LearningParams(lr, sigmoid, sigmoidPrime, keepStats = false)
-    oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
-    brnn::BrnnNetwork = BrnnNetwork(8, 20, 8, rParams, 20, oParams, false)
-
-    learn(brnn, dataSet, validationSet, true, 25, .0001, 10, 100, 11)
-
-    mkpath("gesturesClassification")
-    displayGraphs(brnn, "gesturesClassification/", true)
-   
+    function gesturesClassificationFcn(lr::Float64)
+        rParams::LearningParams = LearningParams(lr, innerActivation, innerActivationPrime, keepStats = false)
+        oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
+        brnn::BrnnNetwork = BrnnNetwork(8, 15, 8, rParams, 15, oParams, false)
+    end
+    lrSweep = [.001, .005, .01, .1, .2]
+    paramSweep(lrSweep, gesturesClassificationFcn, dataSet, validationSet, 15, name; isClassification = false,minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 2)
 end
 
 ######################################
@@ -210,11 +194,11 @@ end
 function run()
     # BRNN Experiments
     ##################
-    #runGesturesClassification()
+    #runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/")
     #runDparity()
-    runWeightedSumClassification(sigmoid, sigmoidPrime, "weightedSumClassificationSigmoid/")
+    #runWeightedSumClassification(sigmoid, sigmoidPrime, "weightedSumClassificationSigmoid/")
     runWeightedSumRegression(tanH, tanHPrime, "weightedSumRegressionSigmoid/")
-    #runWeightedSumClassification(ReLU, ReLUPrime, "weightedSumClassificationReLU/")
+    ##runWeightedSumClassification(ReLU, ReLUPrime, "weightedSumClassificationReLU/")
 
 
     # LSTM-BRNN Experiments
