@@ -194,10 +194,10 @@ end
 function run()
     # BRNN Experiments
     ##################
-    #runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/")
+    runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/")
     #runDparity()
     #runWeightedSumClassification(sigmoid, sigmoidPrime, "weightedSumClassificationSigmoid/")
-    runWeightedSumRegression(tanH, tanHPrime, "weightedSumRegressionSigmoid/")
+    #runWeightedSumRegression(tanH, tanHPrime, "weightedSumRegressionSigmoid/")
     ##runWeightedSumClassification(ReLU, ReLUPrime, "weightedSumClassificationReLU/")
 
 

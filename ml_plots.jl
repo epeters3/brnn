@@ -11,7 +11,11 @@ function displayLayerStatistics(stats::LayerStatistics, name::String)
 end
 
 function displayLearningStatistics(stats::LearningStatistics, name::String, isClassification::Bool)
-    plt = plot(1:length(stats.trainErrors), hcat(stats.trainErrors, stats.valErrors, stats.valAccuracies), label = ["Train Error", "Val. Error", "Val. Accuracy"], xlabel = "Epochs", ylabel = isClassification ? "Loss" : "MSE")
+    if isClassification
+        plt = plot(1:length(stats.trainErrors), hcat(stats.trainErrors, stats.valErrors, stats.valAccuracies), label = ["Train Error", "Val. Error", "Val. Accuracy"], xlabel = "Epochs", ylabel =  "Loss")
+    else
+        plt = plot(1:length(stats.trainErrors), hcat(stats.trainErrors, stats.valErrors), label = ["Train Error", "Val. Error"], xlabel = "Epochs", ylabel = "MSE")
+    end
     savefig(plt, name);
 end
 
