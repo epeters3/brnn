@@ -93,7 +93,7 @@ function runWeightedSumClassification(innerActivation::Function, innerActivation
     end
     dataSet = generateWeightedSumData(trainDataSize, window[1], window[2], true)
     validation = generateWeightedSumData(Int64(trainDataSize / 10), window[1], window[2], true)
-    lrSweep = [.001, .005, .01, .1, .2]
+    lrSweep = [.001, .005, .01, .03,  .05, .1, .2]
     paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, window[1] + 1, name; minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 2)
 end
 
@@ -107,20 +107,20 @@ function runWeightedSumRegression(innerActivation::Function, innerActivationPrim
     end
     dataSet = generateWeightedSumData(trainDataSize, window[1], window[2], false)
     validation = generateWeightedSumData(Int64(trainDataSize / 10), window[1], window[2], false)
-    lrSweep = [.001, .005, .01, .1, .2]
+    lrSweep = [.001, .005, .01, .03,  .05, .1, .2]
     paramSweep(lrSweep, weightedSumRegressionFcn, dataSet, validation, window[1] + 1, name; isClassification = false,minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 2)
 end
 
 
 function runGesturesClassification(innerActivation::Function, innerActivationPrime::Function, name::String)
     dataSet = getGesturesDataSet(1:5)
-    validationSet = getGesturesDataSet(31:32)
+    validationSet = getGesturesDataSet(6:8)
     function gesturesClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, innerActivation, innerActivationPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
         brnn::BrnnNetwork = BrnnNetwork(8, 15, 8, rParams, 15, oParams, false)
     end
-    lrSweep = [.001, .005, .01, .1, .2]
+    lrSweep = [.001, .005, .01, .03, .05, .1, .2]
     paramSweep(lrSweep, gesturesClassificationFcn, dataSet, validationSet, 15, name; isClassification = false,minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 2)
 end
 
