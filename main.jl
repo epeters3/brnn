@@ -91,12 +91,7 @@ function runWeightedSumClassification(lrates::Array{Float64,1}, window::Array{In
     end
     dataSet = generateWeightedSumData(trainDataSize, window[1], window[2], true)
     validation = generateWeightedSumData(Int64(trainDataSize / 10), window[1], window[2], true)
-    << << << < HEAD
     paramSweep(lrates, weightedSumClassificationFcn, dataSet, validation, window[1] + 1, name; minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 2)
-    === === =
-    lrSweep = [.001]
-    paramSweep(lrSweep, weightedSumClassificationFcn, dataSet, validation, window[1] + 1, name; minDelta = .0001, minEpochs = 200, maxEpochs = 200, numTries = 1)
-    >>> >>> > ae399095fbee8fa3024db744288ce7faddccaf91
 end
 
 function runWeightedSumRegression(lrates::Array{Float64,1}, window::Array{Int64}, innerActivation::Function, innerActivationPrime::Function, name::String, isLstm::Bool)
@@ -114,15 +109,15 @@ end
 
 function runGesturesClassification(innerActivation::Function, innerActivationPrime::Function, name::String, isLstm::Bool)
     dataSet = getGesturesDataSet(1:5)
-    validationSet = getGesturesDataSet(6:8)
+    validationSet = getGesturesDataSet(6:7)
     function gesturesClassificationFcn(lr::Float64)
         rParams::LearningParams = LearningParams(lr, innerActivation, innerActivationPrime, keepStats = false)
         oParams::LearningParams = LearningParams(lr, softmax, softmaxPrime, keepStats = false)
 
-        brnn::BrnnNetwork = BrnnNetwork(8, 10, 8, rParams, 15, oParams, false, isLstm)
+        brnn::BrnnNetwork = BrnnNetwork(8, 16, 8, rParams, 10, oParams, isLstm)
     end
-    lrSweep = [.005, .01, .05, .1, .2]
-    paramSweep(lrSweep, gesturesClassificationFcn, dataSet, validationSet, 10, name; isClassification = false,minDelta = .0001, minEpochs = 50, maxEpochs = 100, numTries = 1)
+    lrSweep = [.05, .1, .2]
+    paramSweep(lrSweep, gesturesClassificationFcn, dataSet, validationSet, 10, name; minDelta = .0001, minEpochs = 50, maxEpochs = 50, numTries = 1)
 end
 
 #############################
@@ -131,10 +126,10 @@ end
 
 function run()
 
-    #runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoid/", false)
-    #runDparity([1,0,-1], 2, "Dparity3", false)
-    runDparity([2,1,0,-1,-2], 3, "Dparity5", false)
-    #runDparity([4,3,2,1,0,-1,-2,-3,-4], 5, "Dparity9", false)   
+    runGesturesClassification(sigmoid, sigmoidPrime, "gesturesClassificationSigmoidLSTM/", true)
+    #runDparity([1,0,-1], 2, 10, "Dparity3_LSTM", true)
+    #runDparity([2,1,0,-1,-2], 3, 12, "Dparity5_LSTM", true)
+    #runDparity([4,3,2,1,0,-1,-2,-3,-4], 5, 15, "Dparity9_LSTM", true)   
     #lrSweep = [.001, .005, .01, .03,  .05, .1, .2]
     #smallWeightedSum = [5, 10]
     #largeWeightedSum = [10, 20]
